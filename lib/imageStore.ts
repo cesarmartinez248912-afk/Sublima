@@ -53,7 +53,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
     .from("site_config")
     .select("config")
     .eq("id", 1)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return { gallery: DEFAULT_GALLERY, products: DEFAULT_PRODUCTS, hero: {} };
