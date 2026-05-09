@@ -12,8 +12,11 @@ import {
     type GalleryItemConfig,
 } from "@/lib/imageStore";
 
-// ─── Cambia esta contraseña ────────────────────────────────────────────────
-const ADMIN_PASSWORD = "quesitorrallado32";
+// ─── Contraseña desde variable de entorno ─────────────────────────────────
+// En Vercel → Settings → Environment Variables agrega:
+//   NEXT_PUBLIC_ADMIN_PASSWORD = tu-contraseña-segura
+// Si no la defines, se usa "admin" como fallback (cámbialo antes de producción).
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "admin";
 
 type Tab = "gallery" | "products" | "hero";
 
