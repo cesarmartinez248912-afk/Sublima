@@ -2,42 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { getSiteConfig } from "@/lib/imageStore";
-
-const STATIC_PRODUCTS = [
-  {
-    name: "Tazas Premium",
-    badge: "Cerámica AAA",
-    description:
-      "Ideal para regalos corporativos o uso personal. Resistente a microondas y lavavajillas.",
-    icon: "coffee",
-    gradient: "from-blue-50 to-indigo-50",
-  },
-  {
-    name: "Termos",
-    badge: "Acero Inoxidable",
-    description:
-      "Doble pared al vacío. Mantiene la temperatura por horas con estilo único.",
-    icon: "water_bottle",
-    gradient: "from-purple-50 to-blue-50",
-  },
-  {
-    name: "Playeras",
-    badge: "Tacto Algodón",
-    description:
-      "Comodidad inigualable con impresión que no se siente al tacto ni se decolora.",
-    icon: "checkroom",
-    gradient: "from-indigo-50 to-sky-50",
-  },
-  {
-    name: "Mousepads",
-    badge: "Neopreno Alta Densidad",
-    description:
-      "Superficie optimizada para precisión. Diseño de borde a borde sin desgaste.",
-    icon: "mouse",
-    gradient: "from-sky-50 to-cyan-50",
-  },
-];
+import { getSiteConfig, DEFAULT_PRODUCTS, type ProductConfig } from "@/lib/imageStore";
 
 const containerVariants = {
   hidden: {},
@@ -50,18 +15,14 @@ const cardVariants = {
 };
 
 export default function Products() {
-  const [productImages, setProductImages] = useState<Record<string, string>>({});
+  const [products, setProducts] = useState<ProductConfig[]>(DEFAULT_PRODUCTS);
 
   useEffect(() => {
-    const load = async () => {
-      const cfg = await getSiteConfig();
-      const map: Record<string, string> = {};
-      cfg.products.forEach((p) => {
-        if (p.imageUrl) map[p.name] = p.imageUrl;
-      });
-      setProductImages(map);
-    };
-    load();
+    getSiteConfig().then((cfg) => {
+      if (cfg.products && cfg.products.length > 0) {
+        setProducts(cfg.products);
+      }
+    });
   }, []);
 
   const scrollToContact = (productName: string) => {
@@ -98,61 +59,58 @@ export default function Products() {
           viewport={{ once: true, margin: "-50px" }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
         >
-          {STATIC_PRODUCTS.map((product) => {
-            const customImage = productImages[product.name];
-            return (
-              <motion.div
-                key={product.name}
-                variants={cardVariants}
-                className="bg-surface-container-lowest rounded-[24px] overflow-hidden hover:scale-[1.02] transition-all duration-300 flex flex-col group cursor-pointer"
-                style={{ boxShadow: "0 10px 40px rgba(0,0,0,0.04)" }}
+          {products.map((product) => (
+            <motion.div
+              key={product.id}
+              variants={cardVariants}
+              className="bg-surface-container-lowest rounded-[24px] overflow-hidden hover:scale-[1.02] transition-all duration-300 flex flex-col group cursor-pointer"
+              style={{ boxShadow: "0 10px 40px rgba(0,0,0,0.04)" }}
+            >
+              {/* Product visual */}
+              <div
+                className={`h-64 relative overflow-hidden flex items-center justify-center
+                  ${product.imageUrl ? "bg-[#f2f3ff]" : `bg-gradient-to-br ${product.gradient}`}`}
               >
-                {/* Product visual */}
-                <div
-                  className={`h-64 relative overflow-hidden flex items-center justify-center
-                    ${customImage ? "bg-[#f2f3ff]" : `bg-gradient-to-br ${product.gradient}`}`}
+                {product.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={product.imageUrl}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <span className="material-symbols-outlined text-[72px] text-primary-container/40 group-hover:text-primary-container/60 group-hover:scale-110 transition-all duration-500">
+                    {product.icon}
+                  </span>
+                )}
+                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-primary-container text-[11px] font-semibold uppercase tracking-wide z-10">
+                  {product.badge}
+                </div>
+              </div>
+
+              {/* Card body */}
+              <div className="p-6 flex-grow flex flex-col justify-between">
+                <div>
+                  <h3 className="text-[20px] font-bold text-on-surface mb-2 font-headline-md">
+                    {product.name}
+                  </h3>
+                  <p className="text-[15px] text-on-surface-variant mb-6 leading-relaxed line-clamp-2">
+                    {product.description}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => scrollToContact(product.name)}
+                  className="w-full py-3 border border-outline-variant rounded-full text-[12px] font-semibold uppercase tracking-widest text-primary-container hover:bg-primary-container hover:text-on-primary-container transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
                 >
-                  {customImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={customImage}
-                      alt={product.name}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <span className="material-symbols-outlined text-[72px] text-primary-container/40 group-hover:text-primary-container/60 group-hover:scale-110 transition-all duration-500">
-                      {product.icon}
-                    </span>
-                  )}
-                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-primary-container text-[11px] font-semibold uppercase tracking-wide z-10">
-                    {product.badge}
-                  </div>
-                </div>
-
-                {/* Card body */}
-                <div className="p-6 flex-grow flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-[20px] font-bold text-on-surface mb-2 font-headline-md">
-                      {product.name}
-                    </h3>
-                    <p className="text-[15px] text-on-surface-variant mb-6 leading-relaxed line-clamp-2">
-                      {product.description}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => scrollToContact(product.name)}
-                    className="w-full py-3 border border-outline-variant rounded-full text-[12px] font-semibold uppercase tracking-widest text-primary-container hover:bg-primary-container hover:text-on-primary-container transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">
-                      edit
-                    </span>
-                    Personalizar
-                  </button>
-                </div>
-              </motion.div>
-            );
-          })}
+                  <span className="material-symbols-outlined text-[16px]">
+                    edit
+                  </span>
+                  Personalizar
+                </button>
+              </div>
+            </motion.div>
+          ))}
         </motion.div>
 
         <motion.div
