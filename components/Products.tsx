@@ -19,9 +19,7 @@ export default function Products() {
 
   useEffect(() => {
     getSiteConfig().then((cfg) => {
-      if (cfg.products && cfg.products.length > 0) {
-        setProducts(cfg.products);
-      }
+      setProducts(cfg.products.length > 0 ? cfg.products : DEFAULT_PRODUCTS);
     });
   }, []);
 

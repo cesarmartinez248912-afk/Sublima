@@ -6,7 +6,6 @@ import {
   getSiteConfig,
   DEFAULT_GALLERY,
   type GalleryCategory,
-  type GalleryImage,
 } from "@/lib/imageStore";
 
 // ─── Lightbox ─────────────────────────────────────────────────────────────────
@@ -304,46 +303,52 @@ export default function Gallery() {
     getSiteConfig().then((cfg) => setCategories(cfg.gallery));
   }, []);
 
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   const handleViewMore = useCallback((category: GalleryCategory) => {
     setSelectedCategory(category);
-    // Scroll to the gallery section top
-    setTimeout(() => {
-      document.querySelector("#galeria")?.scrollIntoView({ behavior: "smooth" });
-    }, 50);
+    document.body.style.overflow = "hidden";
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   const handleBack = useCallback(() => {
     setSelectedCategory(null);
-    setTimeout(() => {
-      document.querySelector("#galeria")?.scrollIntoView({ behavior: "smooth" });
-    }, 50);
+    document.body.style.overflow = "";
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   return (
     <section id="galeria" className="py-20 bg-surface">
-      <div className="max-w-[1280px] mx-auto px-4 md:px-6">
-        <AnimatePresence mode="wait">
-          {selectedCategory ? (
-            <motion.div
-              key={`detail-${selectedCategory.id}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
+      <AnimatePresence mode="wait">
+        {selectedCategory ? (
+          <motion.div
+            key={`detail-${selectedCategory.id}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 bg-surface overflow-y-auto"
+          >
+            <div className="max-w-[1280px] mx-auto px-4 md:px-6 py-8 md:py-10">
               <CategoryDetail
                 category={selectedCategory}
                 onBack={handleBack}
               />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="grid"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="grid"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="max-w-[1280px] mx-auto px-4 md:px-6"
+          >
               {/* Header */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
