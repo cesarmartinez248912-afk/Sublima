@@ -1,9 +1,7 @@
 // lib/imageStore.ts
-// Gestiona imágenes del sitio usando Supabase Storage + Database
+// Gestión robusta de configuración, galerías y productos con Supabase.
 
 import { supabase } from "./supabase";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface GalleryImage {
   id: number;
@@ -13,14 +11,14 @@ export interface GalleryImage {
 
 export interface GalleryCategory {
   id: number;
-  title: string;        // Nombre de la categoría (ej. "Tazas")
-  badge: string;        // Etiqueta corta (ej. "Cerámica")
-  icon: string;         // Material Symbol (fallback cuando no hay imagen)
-  gradient: string;     // Gradient CSS classes (fallback)
-  colSpan: string;      // Clases de grid para el layout de la portada
-  large: boolean;       // Tarjeta grande (2×2) o pequeña
-  imageUrl?: string;    // Imagen de portada de la categoría
-  images: GalleryImage[]; // Fotos dentro de la categoría (para "Ver más")
+  title: string;
+  badge: string;
+  icon: string;
+  gradient: string;
+  colSpan: string;
+  large: boolean;
+  imageUrl?: string;
+  images: GalleryImage[];
 }
 
 export interface ProductConfig {
@@ -43,10 +41,8 @@ export interface SiteConfig {
   hero: HeroConfig;
 }
 
-// ─── Alias de compatibilidad (admin lo usa como GalleryItemConfig) ────────────
+// Compatibilidad con el admin
 export type GalleryItemConfig = GalleryCategory;
-
-// ─── Defaults ────────────────────────────────────────────────────────────────
 
 export const DEFAULT_GALLERY: GalleryCategory[] = [
   {
@@ -140,85 +136,148 @@ export const DEFAULT_PRODUCTS: ProductConfig[] = [
   },
 ];
 
-// ─── Read config from Supabase ───────────────────────────────────────────────
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-export async function getSiteConfig(): Promise<SiteConfig> {
-  const { data, error } = await supabase
-    .from("site_config")
-    .select("config")
-    .eq("id", 1)
-    .maybeSingle();
+function toString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
 
-  if (error || !data) {
-    return { gallery: DEFAULT_GALLERY, products: DEFAULT_PRODUCTS, hero: {} };
-  }
+function toBoolean(value: unknown, fallback = false): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
 
-  const cfg = data.config as Partial<SiteConfig>;
+function toNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
 
-  // Migrar galerías antiguas (sin campo images) al nuevo formato
-  const rawGallery = cfg.gallery ?? DEFAULT_GALLERY;
-  const gallery: GalleryCategory[] = rawGallery.map((g) => ({
-    images: [],
-    ...g,
-  }));
+function normalizeImages(value: unknown): GalleryImage[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(isRecord)
+    .map((img, idx) => ({
+      id: toNumber(img.id, idx + 1),
+      imageUrl: toString(img.imageUrl, ""),
+      caption: toString(img.caption, ""),
+    }));
+}
 
-  // Migrar productos antiguos (sin id/badge/description) al nuevo formato
-  const rawProducts = cfg.products ?? DEFAULT_PRODUCTS;
-  const products: ProductConfig[] = rawProducts.map((p, i) => {
-    const def = DEFAULT_PRODUCTS[i] ?? DEFAULT_PRODUCTS[0];
-    return {
-      id: (p as ProductConfig).id ?? i + 1,
-      badge: (p as ProductConfig).badge ?? def.badge,
-      description: (p as ProductConfig).description ?? def.description,
-      icon: (p as ProductConfig).icon ?? def.icon,
-      gradient: (p as ProductConfig).gradient ?? def.gradient,
-      ...p,
-    } as ProductConfig;
-  });
+function normalizeGallery(value: unknown): GalleryCategory[] {
+  if (!Array.isArray(value)) return DEFAULT_GALLERY;
 
+  return value
+    .filter(isRecord)
+    .map((g, idx) => ({
+      id: toNumber(g.id, idx + 1),
+      title: toString(g.title, `Categoría ${idx + 1}`),
+      badge: toString(g.badge, ""),
+      icon: toString(g.icon, "image"),
+      gradient: toString(g.gradient, "from-gray-100 to-gray-200"),
+      colSpan: toString(g.colSpan, ""),
+      large: toBoolean(g.large, false),
+      imageUrl: toString(g.imageUrl, ""),
+      images: normalizeImages(g.images),
+    }));
+}
+
+function normalizeProducts(value: unknown): ProductConfig[] {
+  if (!Array.isArray(value)) return DEFAULT_PRODUCTS;
+
+  return value
+    .filter(isRecord)
+    .map((p, idx) => {
+      const fallback = DEFAULT_PRODUCTS[idx] ?? DEFAULT_PRODUCTS[0];
+      return {
+        id: toNumber(p.id, idx + 1),
+        name: toString(p.name, fallback.name),
+        badge: toString(p.badge, fallback.badge),
+        description: toString(p.description, fallback.description),
+        icon: toString(p.icon, fallback.icon),
+        gradient: toString(p.gradient, fallback.gradient),
+        imageUrl: toString(p.imageUrl, ""),
+      };
+    });
+}
+
+function normalizeHero(value: unknown): HeroConfig {
+  if (!isRecord(value)) return {};
   return {
-    gallery,
-    products,
-    hero: cfg.hero ?? {},
+    backgroundImageUrl: toString(value.backgroundImageUrl, ""),
   };
 }
 
-// ─── Save config to Supabase ─────────────────────────────────────────────────
+export async function getSiteConfig(): Promise<SiteConfig> {
+  try {
+    const { data, error } = await supabase
+      .from("site_config")
+      .select("config")
+      .eq("id", 1)
+      .maybeSingle();
 
-export async function setSiteConfig(config: SiteConfig): Promise<void> {
-  await supabase
-    .from("site_config")
-    .upsert({ id: 1, config, updated_at: new Date().toISOString() });
+    if (error || !data?.config) {
+      return {
+        gallery: DEFAULT_GALLERY,
+        products: DEFAULT_PRODUCTS,
+        hero: {},
+      };
+    }
+
+    const cfg = isRecord(data.config) ? data.config : {};
+
+    return {
+      gallery: normalizeGallery(cfg.gallery),
+      products: normalizeProducts(cfg.products),
+      hero: normalizeHero(cfg.hero),
+    };
+  } catch (err) {
+    console.error("Error getSiteConfig:", err);
+    return {
+      gallery: DEFAULT_GALLERY,
+      products: DEFAULT_PRODUCTS,
+      hero: {},
+    };
+  }
 }
 
-// ─── Upload image to Supabase Storage ────────────────────────────────────────
+export async function setSiteConfig(config: SiteConfig): Promise<void> {
+  const { error } = await supabase.from("site_config").upsert({
+    id: 1,
+    config,
+    updated_at: new Date().toISOString(),
+  });
 
-export async function uploadImage(
-  file: File,
-  path: string // e.g. "gallery/cat-1.jpg"
-): Promise<string> {
-  const resizedBlob = await resizeToBlob(file);
+  if (error) {
+    throw new Error(`No se pudo guardar la configuración: ${error.message}`);
+  }
+}
 
-  const { error } = await supabase.storage
-    .from("sublimeart")
-    .upload(path, resizedBlob, {
-      contentType: "image/jpeg",
-      upsert: true,
-    });
+export async function uploadImage(file: File, path: string): Promise<string> {
+  if (typeof window === "undefined") {
+    throw new Error("uploadImage solo puede ejecutarse en el navegador.");
+  }
 
-  if (error) throw new Error(`Error subiendo imagen: ${error.message}`);
+  const blob = await resizeToBlob(file);
+
+  const { error } = await supabase.storage.from("sublimeart").upload(path, blob, {
+    contentType: "image/jpeg",
+    upsert: true,
+  });
+
+  if (error) {
+    throw new Error(`Error subiendo imagen: ${error.message}`);
+  }
 
   const { data } = supabase.storage.from("sublimeart").getPublicUrl(path);
   return `${data.publicUrl}?t=${Date.now()}`;
 }
 
-// ─── Delete image from Storage ───────────────────────────────────────────────
-
 export async function deleteImage(path: string): Promise<void> {
-  await supabase.storage.from("sublimeart").remove([path]);
+  const { error } = await supabase.storage.from("sublimeart").remove([path]);
+  if (error) {
+    throw new Error(`Error eliminando imagen: ${error.message}`);
+  }
 }
-
-// ─── Image resize helper ──────────────────────────────────────────────────────
 
 function resizeToBlob(
   file: File,
@@ -227,35 +286,44 @@ function resizeToBlob(
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    const url = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(file);
 
     img.onload = () => {
       const { width, height } = img;
       const scale = Math.min(1, maxDimension / Math.max(width, height));
+
       const canvas = document.createElement("canvas");
       canvas.width = Math.round(width * scale);
       canvas.height = Math.round(height * scale);
+
       const ctx = canvas.getContext("2d");
       if (!ctx) {
-        reject(new Error("Canvas no disponible"));
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("No se pudo crear el canvas."));
         return;
       }
+
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(objectUrl);
+
       canvas.toBlob(
-        (blob) =>
-          blob
-            ? resolve(blob)
-            : reject(new Error("Error al convertir")),
+        (blob) => {
+          if (!blob) {
+            reject(new Error("No se pudo convertir la imagen."));
+            return;
+          }
+          resolve(blob);
+        },
         "image/jpeg",
         quality
       );
     };
 
     img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("No se pudo cargar la imagen"));
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("No se pudo cargar la imagen."));
     };
-    img.src = url;
+
+    img.src = objectUrl;
   });
 }
