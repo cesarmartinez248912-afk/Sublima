@@ -13,7 +13,7 @@ import {
 } from "@/lib/imageStore";
 
 // ─── Cambia esta contraseña ────────────────────────────────────────────────
-const ADMIN_PASSWORD = "kendra123321";
+const ADMIN_PASSWORD = "quesitorrallado32";
 
 type Tab = "gallery" | "products" | "hero";
 
