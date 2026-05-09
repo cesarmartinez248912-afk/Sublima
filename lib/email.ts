@@ -85,10 +85,10 @@ function buildEmailHTML(data: QuoteFormData): string {
               </p>
               <p style="margin:8px 0 0;color:#c3c6d5;font-size:11px;">
                 ${new Date().toLocaleString("es-MX", {
-                  dateStyle: "full",
-                  timeStyle: "short",
-                  timeZone: "America/Mexico_City",
-                })}
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: "America/Mexico_City",
+  })}
               </p>
             </td>
           </tr>
@@ -182,7 +182,7 @@ async function sendViaResend(opts: {
   if (!apiKey) throw new Error("RESEND_API_KEY no configurado");
 
   const fromEmail =
-    process.env.RESEND_FROM_EMAIL ?? "cotizaciones@sublimartpremium.com";
+    process.env.RESEND_FROM_EMAIL ?? "cesarfranciscomartinezg15@gmail.com";
 
   // Dynamic import keeps the bundle lean when using Nodemailer instead
   const { Resend } = await import("resend");
