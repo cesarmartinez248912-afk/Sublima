@@ -53,8 +53,8 @@ export default function Products() {
   const [productImages, setProductImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const load = () => {
-      const cfg = getSiteConfig();
+    const load = async () => {
+      const cfg = await getSiteConfig();
       const map: Record<string, string> = {};
       cfg.products.forEach((p) => {
         if (p.imageUrl) map[p.name] = p.imageUrl;
@@ -62,8 +62,6 @@ export default function Products() {
       setProductImages(map);
     };
     load();
-    window.addEventListener("sublimeart:config-updated", load);
-    return () => window.removeEventListener("sublimeart:config-updated", load);
   }, []);
 
   const scrollToContact = (productName: string) => {
