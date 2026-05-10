@@ -11,11 +11,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { quoteFormSchema, sanitizeString } from "@/lib/validations";
 import { sendQuoteEmail } from "@/lib/email";
 
-// ── Rate-limit muy básico en memoria (por proceso) ────────────────────────
-// Para producción de alto tráfico, usa Upstash Redis + @upstash/ratelimit.
+// ── Rate-limit básico en memoria (por proceso) ────────────────────────────
 const ipTimestamps = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minuto
-const RATE_LIMIT_MAX = 3; // máx 3 envíos por minuto por IP
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 3;
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
@@ -30,24 +29,19 @@ function isRateLimited(ip: string): boolean {
 
 // ── Handler ─────────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
-  // 1. Obtener IP del cliente
   const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown";
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 
-  // 2. Rate limit
   if (isRateLimited(ip)) {
     return NextResponse.json(
       {
         success: false,
-        message:
-          "Demasiados intentos. Por favor espera un momento antes de volver a enviar.",
+        message: "Demasiados intentos. Por favor espera un momento antes de volver a enviar.",
       },
       { status: 429 }
     );
   }
 
-  // 3. Parsear body
   let body: unknown;
   try {
     body = await request.json();
@@ -58,7 +52,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 4. Validar con Zod
   const parsed = quoteFormSchema.safeParse(body);
   if (!parsed.success) {
     const errors = parsed.error.flatten().fieldErrors;
@@ -72,7 +65,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 5. Sanitizar strings (doble capa de seguridad)
+  // Sanitize strings
   const data = {
     ...parsed.data,
     name: sanitizeString(parsed.data.name),
@@ -80,15 +73,25 @@ export async function POST(request: NextRequest) {
     additionalMessage: parsed.data.additionalMessage
       ? sanitizeString(parsed.data.additionalMessage)
       : undefined,
+    deliveryStreet: parsed.data.deliveryStreet
+      ? sanitizeString(parsed.data.deliveryStreet)
+      : undefined,
+    deliveryColonia: parsed.data.deliveryColonia
+      ? sanitizeString(parsed.data.deliveryColonia)
+      : undefined,
+    deliveryCity: parsed.data.deliveryCity
+      ? sanitizeString(parsed.data.deliveryCity)
+      : undefined,
+    deliveryState: parsed.data.deliveryState
+      ? sanitizeString(parsed.data.deliveryState)
+      : undefined,
+    // referenceImageBase64 passes through as-is (already validated by Zod max length)
   };
 
-  // 6. Enviar correo
   try {
     await sendQuoteEmail(data);
   } catch (err) {
     console.error("[/api/contact] Error al enviar correo:", err);
-
-    // No exponemos el detalle del error al cliente por seguridad
     return NextResponse.json(
       {
         success: false,
@@ -99,15 +102,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 7. Respuesta exitosa
   return NextResponse.json({
     success: true,
-    message:
-      "¡Tu solicitud fue enviada con éxito! Te contactaremos en menos de 24 horas.",
+    message: "¡Tu solicitud fue enviada con éxito! Te contactaremos en menos de 24 horas.",
   });
 }
 
-// Rechazar cualquier método que no sea POST
 export function GET() {
   return NextResponse.json({ message: "Método no permitido" }, { status: 405 });
 }

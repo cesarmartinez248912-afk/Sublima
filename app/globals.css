@@ -43,10 +43,13 @@
 
   /* Reusable button base */
   .btn-primary {
-    @apply bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary 
-           px-8 py-4 rounded-full text-label-sm font-label-sm transition-all duration-200 
-           flex items-center gap-2 shadow-sm hover:shadow-md disabled:opacity-60 
-           disabled:cursor-not-allowed active:scale-[0.98];
+    @apply px-8 py-4 rounded-full text-label-sm font-label-sm transition-all duration-200 
+           flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-60 
+           disabled:cursor-not-allowed active:scale-[0.98] text-white;
+    background: linear-gradient(135deg, #0047ab 0%, #712ae2 100%);
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #0055cc 0%, #8034f0 100%);
   }
 
   .btn-secondary {
@@ -61,6 +64,9 @@
     @apply bg-surface-container-lowest rounded-[24px] overflow-hidden 
            hover:scale-[1.02] transition-all duration-300 flex flex-col;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+  }
+  .card-product:hover {
+    box-shadow: 0 20px 60px rgba(0, 71, 171, 0.10);
   }
 
   /* Form input styles */
@@ -78,11 +84,26 @@
   .form-error {
     @apply text-[11px] text-error mt-1 flex items-center gap-1;
   }
+
+  /* Gradient badge */
+  .badge-gradient {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest text-white;
+    background: linear-gradient(135deg, #0047ab 0%, #712ae2 100%);
+  }
+
+  /* Section gradient backgrounds */
+  .section-blue-tint {
+    background: linear-gradient(160deg, #f0f3ff 0%, #faf8ff 60%, #f5f0ff 100%);
+  }
 }
 
 @layer utilities {
   .glow-shadow {
-    box-shadow: 0 0 15px rgba(0, 71, 171, 0.2);
+    box-shadow: 0 0 20px rgba(0, 71, 171, 0.18), 0 0 60px rgba(113, 42, 226, 0.08);
+  }
+
+  .glow-shadow-purple {
+    box-shadow: 0 0 20px rgba(113, 42, 226, 0.2), 0 0 60px rgba(0, 71, 171, 0.08);
   }
 
   .ambient-shadow {
@@ -94,27 +115,40 @@
     padding-bottom: 80px;
   }
 
+  /* Gradient text utility */
+  .text-gradient {
+    background: linear-gradient(90deg, #0047ab 0%, #712ae2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
   /* Scrollbar styling */
   ::-webkit-scrollbar {
     width: 6px;
   }
-
   ::-webkit-scrollbar-track {
     background: #f2f3ff;
   }
-
   ::-webkit-scrollbar-thumb {
-    background: #c3c6d5;
+    background: linear-gradient(#0047ab, #712ae2);
     border-radius: 3px;
   }
-
   ::-webkit-scrollbar-thumb:hover {
-    background: #737784;
+    background: linear-gradient(#0055cc, #8034f0);
   }
 
   /* Bento grid hover overlay */
   .bento-overlay {
     @apply absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent 
            opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10;
+  }
+
+  /* Glass card */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.85);
   }
 }
