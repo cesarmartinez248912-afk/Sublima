@@ -240,9 +240,8 @@ function CategoryCard({
       {!category.imageUrl && (
         <div className="absolute inset-0 flex items-center justify-center">
           <span
-            className={`material-symbols-outlined text-primary-container/20 group-hover:text-primary-container/30 transition-all duration-500 group-hover:scale-110 ${
-              category.large ? "text-[100px]" : "text-[60px]"
-            }`}
+            className={`material-symbols-outlined text-primary-container/20 group-hover:text-primary-container/30 transition-all duration-500 group-hover:scale-110 ${category.large ? "text-[100px]" : "text-[60px]"
+              }`}
           >
             {category.icon}
           </span>
@@ -349,57 +348,56 @@ export default function Gallery() {
             transition={{ duration: 0.2 }}
             className="max-w-[1280px] mx-auto px-4 md:px-6"
           >
-              {/* Header */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
-                className="flex flex-col md:flex-row justify-between items-end mb-12"
-              >
-                <div className="max-w-2xl">
-                  <h2 className="font-headline-lg text-[32px] font-bold text-on-surface mb-4">
-                    Galería de Trabajos
-                  </h2>
-                  <p className="text-[16px] text-on-surface-variant leading-relaxed">
-                    Explora nuestras categorías y encuentra inspiración para tu
-                    próxima creación. Haz clic en{" "}
-                    <span className="font-semibold text-primary-container">
-                      Ver más
-                    </span>{" "}
-                    para ver todos los trabajos de esa categoría.
-                  </p>
-                </div>
-                <button
-                  onClick={() =>
-                    document
-                      .querySelector("#contacto")
-                      ?.scrollIntoView({ behavior: "smooth" })
-                  }
-                  className="mt-6 md:mt-0 inline-flex items-center gap-1 text-primary-container text-[13px] font-semibold hover:underline transition-all"
-                >
-                  Quiero uno así{" "}
-                  <span className="material-symbols-outlined text-[16px]">
-                    arrow_forward
-                  </span>
-                </button>
-              </motion.div>
-
-              {/* Category grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 auto-rows-[240px]">
-                {categories.map((category, idx) => (
-                  <CategoryCard
-                    key={category.id}
-                    category={category}
-                    index={idx}
-                    onViewMore={() => handleViewMore(category)}
-                  />
-                ))}
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="flex flex-col md:flex-row justify-between items-end mb-12"
+            >
+              <div className="max-w-2xl">
+                <h2 className="font-headline-lg text-[32px] font-bold text-on-surface mb-4">
+                  Galería de Trabajos
+                </h2>
+                <p className="text-[16px] text-on-surface-variant leading-relaxed">
+                  Explora nuestras categorías y encuentra inspiración para tu
+                  próxima creación. Haz clic en{" "}
+                  <span className="font-semibold text-primary-container">
+                    Ver más
+                  </span>{" "}
+                  para ver todos los trabajos de esa categoría.
+                </p>
               </div>
+              <button
+                onClick={() =>
+                  document
+                    .querySelector("#contacto")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
+                className="mt-6 md:mt-0 inline-flex items-center gap-1 text-primary-container text-[13px] font-semibold hover:underline transition-all"
+              >
+                Quiero uno así{" "}
+                <span className="material-symbols-outlined text-[16px]">
+                  arrow_forward
+                </span>
+              </button>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+
+            {/* Category grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 auto-rows-[240px]">
+              {categories.map((category, idx) => (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  index={idx}
+                  onViewMore={() => handleViewMore(category)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

@@ -10,8 +10,36 @@ import type { QuoteFormData } from "@/lib/validations";
 
 // ── HTML Email Template ─────────────────────────────────────────────────────
 function buildEmailHTML(data: QuoteFormData): string {
-  const quantity = data.quantity;
   const additionalMessage = data.additionalMessage || "—";
+
+  // Delivery block
+  const deliveryBlock =
+    data.deliveryType === "recoger"
+      ? field("🏪 Entrega", "Recoger en tienda")
+      : field(
+          "🚚 Envío a domicilio",
+          [
+            data.deliveryStreet,
+            data.deliveryColonia,
+            `${data.deliveryCity ?? ""}, ${data.deliveryState ?? ""}`,
+            `C.P. ${data.deliveryZip ?? ""}`,
+          ]
+            .filter(Boolean)
+            .join("<br/>"),
+          true
+        );
+
+  // Reference image block
+  const imageBlock = data.referenceImageBase64
+    ? `
+    <div style="margin-bottom:20px;padding:16px;background:#f2f3ff;border-radius:12px;border-left:4px solid #712ae2;">
+      <p style="margin:0 0 8px;color:#737784;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">
+        🖼️ Imagen de referencia
+      </p>
+      <img src="${data.referenceImageBase64}" alt="Imagen de referencia del cliente"
+           style="max-width:100%;max-height:400px;border-radius:8px;border:1px solid #e2e7ff;display:block;" />
+    </div>`
+    : field("🖼️ Imagen de referencia", "No se adjuntó imagen");
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -30,7 +58,7 @@ function buildEmailHTML(data: QuoteFormData): string {
 
           <!-- Header -->
           <tr>
-            <td style="background:linear-gradient(135deg,#00327d 0%,#0047ab 100%);
+            <td style="background:linear-gradient(135deg,#00327d 0%,#0047ab 50%,#712ae2 100%);
                        padding:40px 48px;text-align:center;">
               <h1 style="margin:0;color:#ffffff;font-family:Montserrat,sans-serif;
                          font-size:26px;font-weight:700;letter-spacing:-0.5px;">
@@ -45,6 +73,7 @@ function buildEmailHTML(data: QuoteFormData): string {
           <!-- Body -->
           <tr>
             <td style="padding:48px;">
+
               <h2 style="margin:0 0 24px;color:#131b2e;font-family:Montserrat,sans-serif;
                          font-size:20px;font-weight:600;">
                 📋 Datos del cliente
@@ -52,21 +81,47 @@ function buildEmailHTML(data: QuoteFormData): string {
 
               ${field("👤 Nombre", data.name)}
               ${field("📧 Correo electrónico", `<a href="mailto:${data.email}" style="color:#0047ab;">${data.email}</a>`)}
-              ${field("📱 Teléfono", `<a href="tel:${data.phone}" style="color:#0047ab;">${data.phone}</a>`)}
-              ${field("🎁 Producto", data.product)}
-              ${field("📦 Cantidad", quantity.toString())}
+              ${field("📱 Teléfono / WhatsApp", `<a href="https://wa.me/${data.phone.replace(/\D/g, '')}" style="color:#0047ab;">${data.phone}</a>`)}
+
+              <h2 style="margin:32px 0 16px;color:#131b2e;font-family:Montserrat,sans-serif;
+                         font-size:20px;font-weight:600;">
+                🎁 Detalles del pedido
+              </h2>
+
+              ${field("📦 Producto", data.product)}
+              ${field("🔢 Cantidad", data.quantity.toString())}
               ${field("🎨 Descripción del diseño", data.designDescription, true)}
-              ${field("💬 Mensaje adicional", additionalMessage, true)}
+
+              <h2 style="margin:32px 0 16px;color:#131b2e;font-family:Montserrat,sans-serif;
+                         font-size:20px;font-weight:600;">
+                🚚 Entrega
+              </h2>
+
+              ${deliveryBlock}
+
+              <h2 style="margin:32px 0 16px;color:#131b2e;font-family:Montserrat,sans-serif;
+                         font-size:20px;font-weight:600;">
+                🖼️ Referencia visual
+              </h2>
+
+              ${imageBlock}
+
+              ${data.additionalMessage ? `
+              <h2 style="margin:32px 0 16px;color:#131b2e;font-family:Montserrat,sans-serif;
+                         font-size:20px;font-weight:600;">
+                💬 Mensaje adicional
+              </h2>
+              ${field("Comentario", additionalMessage, true)}` : ""}
 
               <!-- CTA -->
               <table width="100%" style="margin-top:40px;">
                 <tr>
                   <td align="center">
                     <a href="mailto:${data.email}?subject=Re: Cotización ${data.product}"
-                       style="display:inline-block;background:#0047ab;color:#ffffff;
-                              text-decoration:none;padding:14px 32px;border-radius:100px;
-                              font-size:14px;font-weight:600;letter-spacing:0.05em;
-                              font-family:Inter,sans-serif;">
+                       style="display:inline-block;background:linear-gradient(135deg,#0047ab,#712ae2);
+                              color:#ffffff;text-decoration:none;padding:14px 32px;
+                              border-radius:100px;font-size:14px;font-weight:600;
+                              letter-spacing:0.05em;font-family:Inter,sans-serif;">
                       ✉️ Responder al cliente
                     </a>
                   </td>
@@ -114,6 +169,17 @@ function field(label: string, value: string, multiline = false): string {
 
 // ── Plain text fallback ─────────────────────────────────────────────────────
 function buildEmailText(data: QuoteFormData): string {
+  const deliveryInfo =
+    data.deliveryType === "recoger"
+      ? "Recoger en tienda"
+      : [
+          `Calle: ${data.deliveryStreet ?? "—"}`,
+          `Colonia: ${data.deliveryColonia ?? "—"}`,
+          `Ciudad: ${data.deliveryCity ?? "—"}`,
+          `Estado: ${data.deliveryState ?? "—"}`,
+          `C.P.: ${data.deliveryZip ?? "—"}`,
+        ].join("\n");
+
   return `
 NUEVA SOLICITUD DE COTIZACIÓN — SublimArt Premium
 ===================================================
@@ -127,6 +193,11 @@ CANTIDAD:            ${data.quantity}
 DESCRIPCIÓN DEL DISEÑO:
 ${data.designDescription}
 
+ENTREGA:
+${deliveryInfo}
+
+IMAGEN DE REFERENCIA: ${data.referenceImageBase64 ? "Sí (ver correo HTML)" : "No"}
+
 MENSAJE ADICIONAL:
 ${data.additionalMessage || "—"}
 
@@ -137,7 +208,8 @@ Recibido: ${new Date().toLocaleString("es-MX", { timeZone: "America/Mexico_City"
 
 // ── Subject ─────────────────────────────────────────────────────────────────
 function buildSubject(data: QuoteFormData): string {
-  return `🎨 Nueva cotización: ${data.product} (${data.quantity} uds.) — ${data.name}`;
+  const delivery = data.deliveryType === "envio" ? "🚚 Envío" : "🏪 Recoger";
+  return `🎨 Nueva cotización: ${data.product} (${data.quantity} uds.) — ${data.name} · ${delivery}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,9 +220,7 @@ export async function sendQuoteEmail(data: QuoteFormData): Promise<void> {
   const toEmail = process.env.CONTACT_EMAIL;
 
   if (!toEmail) {
-    throw new Error(
-      "CONTACT_EMAIL no está configurado en las variables de entorno"
-    );
+    throw new Error("CONTACT_EMAIL no está configurado en las variables de entorno");
   }
 
   const subject = buildSubject(data);
@@ -160,31 +230,19 @@ export async function sendQuoteEmail(data: QuoteFormData): Promise<void> {
   if (provider === "resend") {
     await sendViaResend({ toEmail, subject, html, text, replyTo: data.email });
   } else {
-    await sendViaNodemailer({
-      toEmail,
-      subject,
-      html,
-      text,
-      replyTo: data.email,
-    });
+    await sendViaNodemailer({ toEmail, subject, html, text, replyTo: data.email });
   }
 }
 
 // ── Resend ──────────────────────────────────────────────────────────────────
 async function sendViaResend(opts: {
-  toEmail: string;
-  subject: string;
-  html: string;
-  text: string;
-  replyTo: string;
+  toEmail: string; subject: string; html: string; text: string; replyTo: string;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY no configurado");
 
-  const fromEmail =
-    process.env.RESEND_FROM_EMAIL ?? "cesarfranciscomartinezg15@gmail.com";
+  const fromEmail = process.env.RESEND_FROM_EMAIL ?? "noreply@sublimartpremium.com";
 
-  // Dynamic import keeps the bundle lean when using Nodemailer instead
   const { Resend } = await import("resend");
   const resend = new Resend(apiKey);
 
@@ -204,11 +262,7 @@ async function sendViaResend(opts: {
 
 // ── Nodemailer / SMTP ───────────────────────────────────────────────────────
 async function sendViaNodemailer(opts: {
-  toEmail: string;
-  subject: string;
-  html: string;
-  text: string;
-  replyTo: string;
+  toEmail: string; subject: string; html: string; text: string; replyTo: string;
 }): Promise<void> {
   const emailUser = process.env.EMAIL_USER;
   const emailPass = process.env.EMAIL_PASS;
@@ -221,10 +275,7 @@ async function sendViaNodemailer(opts: {
 
   const transporter = nodemailer.default.createTransport({
     service: "gmail",
-    auth: {
-      user: emailUser,
-      pass: emailPass,
-    },
+    auth: { user: emailUser, pass: emailPass },
   });
 
   await transporter.sendMail({

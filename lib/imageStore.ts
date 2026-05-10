@@ -220,9 +220,9 @@ export function normalizeSiteConfig(input: unknown): SiteConfig {
   const rawHero = cfg.hero;
   const hero = isRecord(rawHero)
     ? {
-        backgroundImageUrl:
-          toString(rawHero.backgroundImageUrl, "") || undefined,
-      }
+      backgroundImageUrl:
+        toString(rawHero.backgroundImageUrl, "") || undefined,
+    }
     : {};
 
   return {
