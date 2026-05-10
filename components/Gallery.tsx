@@ -184,11 +184,14 @@ function CategoryDetail({
         {/* CTA at the bottom */}
         <div className="mt-14 text-center">
           <button
-            onClick={() =>
-              document
-                .querySelector("#contacto")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
+            onClick={() => {
+              onBack();
+              setTimeout(() => {
+                document
+                  .querySelector("#contacto")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              }, 350);
+            }}
             className="inline-flex items-center gap-2 bg-primary-container text-on-primary-container px-8 py-4 rounded-full text-[12px] font-semibold uppercase tracking-widest hover:opacity-90 transition-all duration-200 shadow-sm"
           >
             Quiero uno así
