@@ -3,7 +3,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SublimArt Premium — Personalización de Alta Calidad",
+  title: "Sublimax Navojoa — Impresión Personalizada",
   description:
     "Servicio de sublimación de alta gama para empresas, eventos y regalos personales. Tazas, termos, playeras, mousepads y más con tu diseño.",
   keywords: [
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     "regalos corporativos",
   ],
   openGraph: {
-    title: "SublimArt Premium",
+    title: "Sublimax Navojoa",
     description: "Convertimos tus ideas en productos únicos",
     type: "website",
   },

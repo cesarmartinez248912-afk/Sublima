@@ -17,6 +17,27 @@ const scrollTo = (id: string) =>
   document.querySelector(id)?.scrollIntoView({ behavior: "smooth" });
 
 export default function Footer() {
+  const socialLinks = [
+    {
+      href: SITE_CONFIG.social.instagram,
+      label: "Instagram",
+      icon: "photo_camera",
+      show: !!SITE_CONFIG.social.instagram,
+    },
+    {
+      href: SITE_CONFIG.social.facebook,
+      label: "Facebook",
+      icon: "thumb_up",
+      show: !!SITE_CONFIG.social.facebook,
+    },
+    {
+      href: getWhatsAppUrl(),
+      label: "WhatsApp",
+      icon: "chat",
+      show: true,
+    },
+  ].filter((s) => s.show);
+
   return (
     <footer className="bg-surface-container-lowest border-t border-outline-variant py-20 mt-0">
       <div className="max-w-[1280px] mx-auto px-4 md:px-6">
@@ -27,30 +48,14 @@ export default function Footer() {
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="text-xl font-bold text-primary font-headline-md hover:opacity-80 transition-opacity text-left"
             >
-              SublimArt Premium
+              {SITE_CONFIG.name}
             </button>
             <p className="text-[14px] text-on-surface-variant leading-relaxed">
               {SITE_CONFIG.description}
             </p>
             {/* Social icons */}
             <div className="flex gap-3 mt-2">
-              {[
-                {
-                  href: SITE_CONFIG.social.instagram,
-                  label: "Instagram",
-                  icon: "photo_camera",
-                },
-                {
-                  href: SITE_CONFIG.social.facebook,
-                  label: "Facebook",
-                  icon: "thumb_up",
-                },
-                {
-                  href: getWhatsAppUrl(),
-                  label: "WhatsApp",
-                  icon: "chat",
-                },
-              ].map((s) => (
+              {socialLinks.map((s) => (
                 <a
                   key={s.label}
                   href={s.href}
@@ -129,6 +134,12 @@ export default function Footer() {
                 </span>
                 {SITE_CONFIG.phone}
               </a>
+              <div className="flex items-start gap-2 text-[14px] text-on-surface-variant">
+                <span className="material-symbols-outlined text-[18px] text-primary-container flex-shrink-0 mt-0.5">
+                  location_on
+                </span>
+                {SITE_CONFIG.address}
+              </div>
               <div className="flex items-center gap-2 text-[14px] text-on-surface-variant">
                 <span className="material-symbols-outlined text-[18px] text-primary-container">
                   schedule
@@ -155,7 +166,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="pt-8 border-t border-surface-container-high text-center">
           <p className="text-[12px] text-on-surface-variant">
-            © {new Date().getFullYear()} SublimArt Premium · Todos los derechos
+            © {new Date().getFullYear()} {SITE_CONFIG.name} · Todos los derechos
             reservados · Hecho con{" "}
             <span className="text-error" aria-label="amor">
               ♥

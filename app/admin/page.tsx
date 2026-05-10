@@ -39,7 +39,7 @@ const ICON_OPTIONS = [
 ];
 
 const GRADIENT_OPTIONS = [
-  { value: "from-blue-50 to-indigo-50", label: "Azul Índigo" },
+  { value: "from-amber-50 to-yellow-50", label: "Dorado" },
   { value: "from-purple-50 to-blue-50", label: "Púrpura Azul" },
   { value: "from-indigo-50 to-sky-50", label: "Índigo Cielo" },
   { value: "from-sky-50 to-cyan-50", label: "Cielo Cian" },
@@ -48,7 +48,7 @@ const GRADIENT_OPTIONS = [
   { value: "from-amber-50 to-orange-100", label: "Ámbar" },
   { value: "from-emerald-50 to-teal-100", label: "Esmeralda" },
   { value: "from-slate-50 to-blue-100", label: "Pizarra" },
-  { value: "from-blue-100 via-indigo-50 to-blue-50", label: "Azul Premium" },
+  { value: "from-gray-50 to-slate-100", label: "Carbón Suave" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ function ImageDropZone({
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
               <button
                 onClick={() => inputRef.current?.click()}
-                className="bg-white text-[#0047ab] text-[12px] font-semibold px-4 py-2 rounded-full hover:bg-blue-50 transition-colors flex items-center gap-1"
+                className="bg-white text-[#1E1E1E] text-[12px] font-semibold px-4 py-2 rounded-full hover:bg-amber-50 transition-colors flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-[14px]">swap_horiz</span>
                 Cambiar
@@ -133,11 +133,11 @@ function ImageDropZone({
           onDrop={onDrop}
           onClick={() => !uploading && inputRef.current?.click()}
           className={`${aspectClass} rounded-2xl border-2 border-dashed cursor-pointer flex flex-col items-center justify-center gap-2 transition-all
-            ${dragging ? "border-[#0047ab] bg-blue-50" : "border-[#c3c6d5] hover:border-[#0047ab] hover:bg-[#f2f3ff]"}`}
+            ${dragging ? "border-[#F0A500] bg-amber-50" : "border-[#c3c6d5] hover:border-[#F0A500] hover:bg-[#FFF9F0]"}`}
         >
           {uploading ? (
             <>
-              <div className="w-7 h-7 border-2 border-[#0047ab] border-t-transparent rounded-full animate-spin" />
+              <div className="w-7 h-7 border-2 border-[#1E1E1E] border-t-transparent rounded-full animate-spin" />
               <p className="text-[12px] text-[#434653]">Subiendo…</p>
             </>
           ) : (
@@ -145,7 +145,7 @@ function ImageDropZone({
               <span className="material-symbols-outlined text-[32px] text-[#737784]">cloud_upload</span>
               <p className="text-[12px] text-[#434653] text-center px-4">
                 Arrastra aquí, o{" "}
-                <span className="text-[#0047ab] font-semibold">selecciona</span>
+                <span className="text-[#1E1E1E] font-semibold">selecciona</span>
               </p>
               <p className="text-[10px] text-[#737784]">JPG, PNG, WebP — máx. 20 MB</p>
             </>
@@ -172,9 +172,11 @@ function ImageDropZone({
 
 function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: SiteConfig) => void }) {
   const [uploading, setUploading] = useState<string | null>(null);
+  const [bulkUploading, setBulkUploading] = useState<{ catId: number; done: number; total: number } | null>(null);
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const bulkInputRef = useRef<{ [catId: number]: HTMLInputElement | null }>({});
 
   const categories = config.gallery;
 
@@ -263,6 +265,61 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
   const updateMeta = (catId: number, patch: Partial<GalleryCategory>) =>
     update(categories.map((c) => c.id === catId ? { ...c, ...patch } : c));
 
+  // Bulk upload: select multiple images at once
+  const bulkUpload = async (catId: number, files: FileList) => {
+    const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (validFiles.length === 0) return;
+
+    const cat = categories.find((c) => c.id === catId);
+    if (!cat) return;
+
+    // Check limit
+    const remaining = 20 - cat.images.length;
+    const toUpload = validFiles.slice(0, remaining);
+    if (toUpload.length === 0) {
+      setError("Límite de 20 fotos alcanzado en esta categoría.");
+      return;
+    }
+
+    setError("");
+    setBulkUploading({ catId, done: 0, total: toUpload.length });
+
+    // Create slots first
+    const startId = nextId(cat.images);
+    const newSlots: GalleryImage[] = toUpload.map((_, i) => ({ id: startId + i }));
+
+    // Add all slots at once
+    let latestCategories = categories.map((c) =>
+      c.id !== catId ? c : { ...c, images: [...c.images, ...newSlots] }
+    );
+    onChange({ ...config, gallery: latestCategories });
+
+    // Upload each file sequentially
+    for (let i = 0; i < toUpload.length; i++) {
+      const file = toUpload[i];
+      const imgId = startId + i;
+      try {
+        const url = await uploadImage(file, `gallery/item-${catId}-extra-${imgId}.jpg`);
+        latestCategories = latestCategories.map((c) =>
+          c.id !== catId
+            ? c
+            : {
+                ...c,
+                images: c.images.map((img) =>
+                  img.id === imgId ? { ...img, imageUrl: url } : img
+                ),
+              }
+        );
+        onChange({ ...config, gallery: latestCategories });
+        setBulkUploading({ catId, done: i + 1, total: toUpload.length });
+      } catch (e: unknown) {
+        setError(`Error al subir imagen ${i + 1}: ${e instanceof Error ? e.message : "Error desconocido"}`);
+      }
+    }
+
+    setBulkUploading(null);
+  };
+
   // Add new category
   const addCategory = () => {
     const newId = nextId(categories);
@@ -290,7 +347,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
-        <div className="bg-[#eaedff] rounded-2xl p-4 text-[13px] text-[#0047ab] flex gap-3 flex-1">
+        <div className="bg-[#FFF5D6] rounded-2xl p-4 text-[13px] text-[#1E1E1E] flex gap-3 flex-1">
           <span className="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5">cloud</span>
           <p>
             Cada categoría tiene una imagen de portada y fotos adicionales que se muestran al hacer clic en{" "}
@@ -299,7 +356,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
         </div>
         <button
           onClick={addCategory}
-          className="flex items-center gap-2 bg-[#0047ab] text-white text-[13px] font-semibold px-5 py-3 rounded-xl hover:bg-[#00327d] transition-colors flex-shrink-0"
+          className="flex items-center gap-2 bg-[#1E1E1E] text-white text-[13px] font-semibold px-5 py-3 rounded-xl hover:bg-[#111111] transition-colors flex-shrink-0"
         >
           <span className="material-symbols-outlined text-[16px]">add</span>
           Nueva categoría
@@ -321,7 +378,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
           return (
             <div
               key={cat.id}
-              className="bg-white rounded-2xl border border-[#dae2fd] overflow-hidden"
+              className="bg-white rounded-2xl border border-[#F0E8C8] overflow-hidden"
               style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}
             >
               {/* Header row */}
@@ -331,13 +388,13 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={cat.imageUrl} alt="" className="w-full h-full object-cover rounded-xl" />
                   ) : (
-                    <span className="material-symbols-outlined text-[20px] text-[#0047ab]/60">{cat.icon}</span>
+                    <span className="material-symbols-outlined text-[20px] text-[#1E1E1E]/60">{cat.icon}</span>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-[#131b2e] text-[14px] truncate">{cat.title}</span>
-                    <span className="text-[10px] bg-[#eaedff] text-[#0047ab] px-2 py-0.5 rounded-full font-medium flex-shrink-0">{cat.badge}</span>
+                    <span className="text-[10px] bg-[#FFF5D6] text-[#1E1E1E] px-2 py-0.5 rounded-full font-medium flex-shrink-0">{cat.badge}</span>
                     {cat.large && (
                       <span className="text-[10px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full font-medium flex-shrink-0">Grande</span>
                     )}
@@ -365,7 +422,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
-                        className="text-[12px] text-[#434653] px-3 py-1.5 rounded-lg border border-[#c3c6d5] hover:bg-[#f2f3ff] transition-colors"
+                        className="text-[12px] text-[#434653] px-3 py-1.5 rounded-lg border border-[#c3c6d5] hover:bg-[#FFF9F0] transition-colors"
                       >
                         Cancelar
                       </button>
@@ -387,7 +444,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
 
               {/* Expanded content */}
               {isExpanded && (
-                <div className="border-t border-[#dae2fd] p-5 space-y-6">
+                <div className="border-t border-[#F0E8C8] p-5 space-y-6">
                   {/* Metadata */}
                   <div>
                     <p className="text-[11px] font-semibold text-[#434653] uppercase tracking-wider mb-3">Información de la categoría</p>
@@ -397,7 +454,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
                         <input
                           value={cat.title}
                           onChange={(e) => updateMeta(cat.id, { title: e.target.value })}
-                          className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-[#faf8ff]"
+                          className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-[#faf8ff]"
                         />
                       </div>
                       <div>
@@ -405,7 +462,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
                         <input
                           value={cat.badge}
                           onChange={(e) => updateMeta(cat.id, { badge: e.target.value })}
-                          className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-[#faf8ff]"
+                          className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-[#faf8ff]"
                         />
                       </div>
                       <div>
@@ -413,7 +470,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
                         <select
                           value={cat.icon}
                           onChange={(e) => updateMeta(cat.id, { icon: e.target.value })}
-                          className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-[#faf8ff]"
+                          className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-[#faf8ff]"
                         >
                           {ICON_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>{o.label}</option>
@@ -425,7 +482,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
                         <select
                           value={cat.gradient}
                           onChange={(e) => updateMeta(cat.id, { gradient: e.target.value })}
-                          className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-[#faf8ff]"
+                          className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-[#faf8ff]"
                         >
                           {GRADIENT_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>{o.label}</option>
@@ -441,7 +498,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
                             large: !cat.large,
                             colSpan: !cat.large ? "md:col-span-2 md:row-span-2" : "md:col-span-1 md:row-span-1",
                           })}
-                          className={`w-10 h-6 rounded-full transition-colors flex items-center cursor-pointer ${cat.large ? "bg-[#0047ab]" : "bg-[#c3c6d5]"}`}
+                          className={`w-10 h-6 rounded-full transition-colors flex items-center cursor-pointer ${cat.large ? "bg-[#1E1E1E]" : "bg-[#c3c6d5]"}`}
                         >
                           <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform mx-1 ${cat.large ? "translate-x-4" : "translate-x-0"}`} />
                         </div>
@@ -470,28 +527,72 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
 
                   {/* Extra images */}
                   <div>
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                       <p className="text-[11px] font-semibold text-[#434653] uppercase tracking-wider">
                         Fotos de la categoría{" "}
                         <span className="text-[#737784] font-normal normal-case">(aparecen al hacer "Ver más")</span>
                       </p>
-                      <button
-                        onClick={() => addImageSlot(cat.id)}
-                        disabled={cat.images.length >= 20}
-                        className="flex items-center gap-1 text-[12px] text-[#0047ab] font-semibold hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">add_photo_alternate</span>
-                        Agregar foto
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {/* Bulk upload — select multiple files at once */}
+                        <button
+                          onClick={() => bulkInputRef.current[cat.id]?.click()}
+                          disabled={cat.images.length >= 20 || !!bulkUploading}
+                          className="flex items-center gap-1.5 text-[12px] bg-[#1E1E1E] text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-[#111111] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">photo_library</span>
+                          Subir varias fotos
+                        </button>
+                        <input
+                          ref={(el) => { bulkInputRef.current[cat.id] = el; }}
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              bulkUpload(cat.id, e.target.files);
+                            }
+                            e.target.value = "";
+                          }}
+                        />
+                        {/* Single slot button */}
+                        <button
+                          onClick={() => addImageSlot(cat.id)}
+                          disabled={cat.images.length >= 20 || !!bulkUploading}
+                          className="flex items-center gap-1 text-[12px] text-[#1E1E1E] font-semibold hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">add_photo_alternate</span>
+                          Una foto
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Bulk upload progress */}
+                    {bulkUploading && bulkUploading.catId === cat.id && (
+                      <div className="mb-3 bg-[#FFF5D6] rounded-xl p-3 flex items-center gap-3">
+                        <div className="w-5 h-5 border-2 border-[#1E1E1E] border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-[12px] font-semibold text-[#1E1E1E]">
+                            Subiendo fotos… {bulkUploading.done} de {bulkUploading.total}
+                          </p>
+                          <div className="mt-1.5 h-1.5 bg-[#c3c6d5] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#1E1E1E] rounded-full transition-all duration-300"
+                              style={{ width: `${(bulkUploading.done / bulkUploading.total) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {cat.images.length === 0 ? (
                       <button
-                        onClick={() => addImageSlot(cat.id)}
-                        className="w-full border-2 border-dashed border-[#c3c6d5] rounded-2xl py-8 flex flex-col items-center gap-2 hover:border-[#0047ab] hover:bg-[#f2f3ff] transition-all"
+                        onClick={() => bulkInputRef.current[cat.id]?.click()}
+                        className="w-full border-2 border-dashed border-[#c3c6d5] rounded-2xl py-10 flex flex-col items-center gap-2 hover:border-[#F0A500] hover:bg-[#FFF9F0] transition-all"
                       >
-                        <span className="material-symbols-outlined text-[36px] text-[#737784]">add_photo_alternate</span>
-                        <p className="text-[13px] text-[#434653]">Haz clic para agregar la primera foto</p>
+                        <span className="material-symbols-outlined text-[40px] text-[#737784]">photo_library</span>
+                        <p className="text-[14px] font-semibold text-[#434653]">Seleccionar fotos</p>
+                        <p className="text-[11px] text-[#737784]">Puedes elegir varias a la vez desde tu galería</p>
                       </button>
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -523,7 +624,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
                                   )
                                 }
                                 placeholder="Descripción…"
-                                className="flex-1 text-[11px] px-2 py-1 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-1 focus:ring-[#0047ab] bg-[#faf8ff] min-w-0"
+                                className="flex-1 text-[11px] px-2 py-1 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-1 focus:ring-[#1E1E1E] bg-[#faf8ff] min-w-0"
                               />
                               <button
                                 onClick={() => removeImageSlot(cat.id, img.id, !!img.imageUrl)}
@@ -547,7 +648,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
 
       <button
         onClick={addCategory}
-        className="w-full border-2 border-dashed border-[#c3c6d5] rounded-2xl py-5 flex items-center justify-center gap-2 text-[13px] text-[#434653] font-medium hover:border-[#0047ab] hover:text-[#0047ab] hover:bg-[#f2f3ff] transition-all"
+        className="w-full border-2 border-dashed border-[#c3c6d5] rounded-2xl py-5 flex items-center justify-center gap-2 text-[13px] text-[#434653] font-medium hover:border-[#F0A500] hover:text-[#F0A500] hover:bg-[#FFF9F0] transition-all"
       >
         <span className="material-symbols-outlined text-[20px]">add</span>
         Agregar nueva categoría
@@ -615,13 +716,13 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
-        <div className="bg-[#eaedff] rounded-2xl p-4 text-[13px] text-[#0047ab] flex gap-3 flex-1">
+        <div className="bg-[#FFF5D6] rounded-2xl p-4 text-[13px] text-[#1E1E1E] flex gap-3 flex-1">
           <span className="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5">info</span>
           <p>Agrega, edita o elimina productos del catálogo. Los cambios se reflejan en el sitio al guardar.</p>
         </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-2 bg-[#0047ab] text-white text-[13px] font-semibold px-5 py-3 rounded-xl hover:bg-[#00327d] transition-colors flex-shrink-0"
+          className="flex items-center gap-2 bg-[#1E1E1E] text-white text-[13px] font-semibold px-5 py-3 rounded-xl hover:bg-[#111111] transition-colors flex-shrink-0"
         >
           <span className="material-symbols-outlined text-[16px]">{showAddForm ? "close" : "add"}</span>
           {showAddForm ? "Cancelar" : "Nuevo producto"}
@@ -630,7 +731,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
 
       {/* Add product form */}
       {showAddForm && (
-        <div className="bg-[#faf8ff] border border-[#dae2fd] rounded-2xl p-5 space-y-4">
+        <div className="bg-[#faf8ff] border border-[#F0E8C8] rounded-2xl p-5 space-y-4">
           <p className="text-[13px] font-semibold text-[#131b2e]">Nuevo producto</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -639,7 +740,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
                 value={newProduct.name}
                 onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
                 placeholder="Ej: Gorras bordadas"
-                className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-white"
+                className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white"
               />
             </div>
             <div>
@@ -648,7 +749,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
                 value={newProduct.badge}
                 onChange={(e) => setNewProduct({ ...newProduct, badge: e.target.value })}
                 placeholder="Ej: Algodón Premium"
-                className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-white"
+                className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white"
               />
             </div>
           </div>
@@ -659,7 +760,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
               onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
               placeholder="Breve descripción del producto…"
               rows={2}
-              className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-white resize-none"
+              className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white resize-none"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -668,7 +769,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
               <select
                 value={newProduct.icon}
                 onChange={(e) => setNewProduct({ ...newProduct, icon: e.target.value })}
-                className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-white"
+                className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white"
               >
                 {ICON_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -680,7 +781,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
               <select
                 value={newProduct.gradient}
                 onChange={(e) => setNewProduct({ ...newProduct, gradient: e.target.value })}
-                className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-white"
+                className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white"
               >
                 {GRADIENT_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -691,14 +792,14 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
           <div className="flex justify-end gap-3">
             <button
               onClick={() => setShowAddForm(false)}
-              className="text-[13px] text-[#434653] px-4 py-2 rounded-xl border border-[#c3c6d5] hover:bg-[#f2f3ff] transition-colors"
+              className="text-[13px] text-[#434653] px-4 py-2 rounded-xl border border-[#c3c6d5] hover:bg-[#FFF9F0] transition-colors"
             >
               Cancelar
             </button>
             <button
               onClick={addProduct}
               disabled={!newProduct.name.trim()}
-              className="text-[13px] font-semibold bg-[#0047ab] text-white px-5 py-2 rounded-xl hover:bg-[#00327d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+              className="text-[13px] font-semibold bg-[#1E1E1E] text-white px-5 py-2 rounded-xl hover:bg-[#111111] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
               Agregar producto
@@ -720,7 +821,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
           return (
             <div
               key={product.id}
-              className="bg-white rounded-2xl border border-[#dae2fd] p-5 space-y-4"
+              className="bg-white rounded-2xl border border-[#F0E8C8] p-5 space-y-4"
               style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}
             >
               {/* Product header */}
@@ -729,7 +830,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
                   <input
                     value={product.name}
                     onChange={(e) => updateMeta(product.id, { name: e.target.value })}
-                    className="font-semibold text-[#131b2e] text-[15px] w-full focus:outline-none focus:ring-2 focus:ring-[#0047ab] rounded-lg px-2 py-1 -mx-2 bg-transparent hover:bg-[#faf8ff] transition-colors"
+                    className="font-semibold text-[#131b2e] text-[15px] w-full focus:outline-none focus:ring-2 focus:ring-[#F0A500] rounded-lg px-2 py-1 -mx-2 bg-transparent hover:bg-[#faf8ff] transition-colors"
                   />
                 </div>
                 {isDeleting ? (
@@ -764,7 +865,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
                   <input
                     value={product.badge}
                     onChange={(e) => updateMeta(product.id, { badge: e.target.value })}
-                    className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-[#faf8ff]"
+                    className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-[#faf8ff]"
                   />
                 </div>
                 <div>
@@ -772,7 +873,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
                   <select
                     value={product.icon}
                     onChange={(e) => updateMeta(product.id, { icon: e.target.value })}
-                    className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-[#faf8ff]"
+                    className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-[#faf8ff]"
                   >
                     {ICON_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>{o.label}</option>
@@ -787,7 +888,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
                   value={product.description}
                   onChange={(e) => updateMeta(product.id, { description: e.target.value })}
                   rows={2}
-                  className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-[#faf8ff] resize-none"
+                  className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-[#faf8ff] resize-none"
                 />
               </div>
 
@@ -796,7 +897,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
                 <select
                   value={product.gradient}
                   onChange={(e) => updateMeta(product.id, { gradient: e.target.value })}
-                  className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#0047ab] bg-[#faf8ff]"
+                  className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-[#faf8ff]"
                 >
                   {GRADIENT_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -861,7 +962,7 @@ function HeroTab({ config, onChange }: { config: SiteConfig; onChange: (c: SiteC
 
   return (
     <div className="space-y-6">
-      <div className="bg-[#eaedff] rounded-2xl p-4 text-[13px] text-[#0047ab] flex gap-3">
+      <div className="bg-[#FFF5D6] rounded-2xl p-4 text-[13px] text-[#1E1E1E] flex gap-3">
         <span className="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5">info</span>
         <p>
           Imagen de fondo para la sección principal (Hero). Usa una foto horizontal de alta resolución,
@@ -874,7 +975,7 @@ function HeroTab({ config, onChange }: { config: SiteConfig; onChange: (c: SiteC
           {error}
         </div>
       )}
-      <div className="bg-white rounded-2xl border border-[#dae2fd] p-6" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+      <div className="bg-white rounded-2xl border border-[#F0E8C8] p-6" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
         <ImageDropZone
           imageUrl={config.hero.backgroundImageUrl}
           label="Imagen de fondo del Hero"
@@ -942,11 +1043,11 @@ export default function AdminPage() {
       <div className="min-h-screen bg-[#faf8ff] flex items-center justify-center p-4">
         <div className="w-full max-w-sm bg-white rounded-[28px] p-8 space-y-6" style={{ boxShadow: "0 20px 60px rgba(0,71,171,0.12)" }}>
           <div className="text-center space-y-2">
-            <div className="inline-flex w-14 h-14 items-center justify-center bg-[#dae2ff] rounded-2xl mx-auto">
-              <span className="material-symbols-outlined text-[28px] text-[#0047ab]">admin_panel_settings</span>
+            <div className="inline-flex w-14 h-14 items-center justify-center bg-[#FFF0C0] rounded-2xl mx-auto">
+              <span className="material-symbols-outlined text-[28px] text-[#1E1E1E]">admin_panel_settings</span>
             </div>
             <h1 className="text-[22px] font-bold text-[#131b2e]">Panel de Desarrollador</h1>
-            <p className="text-[13px] text-[#434653]">SublimeArt Premium</p>
+            <p className="text-[13px] text-[#434653]">Sublimax Navojoa</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -958,7 +1059,7 @@ export default function AdminPage() {
                 onChange={(e) => setPasswordInput(e.target.value)}
                 placeholder="••••••••••••"
                 autoFocus
-                className="w-full px-4 py-3 rounded-xl border border-[#c3c6d5] bg-[#faf8ff] text-[#131b2e] focus:outline-none focus:ring-2 focus:ring-[#0047ab] text-[14px] transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-[#c3c6d5] bg-[#faf8ff] text-[#131b2e] focus:outline-none focus:ring-2 focus:ring-[#F0A500] text-[14px] transition-all"
               />
               {passwordError && (
                 <p className="mt-1.5 text-[11px] text-red-500 flex items-center gap-1">
@@ -969,7 +1070,7 @@ export default function AdminPage() {
             </div>
             <button
               type="submit"
-              className="w-full bg-[#0047ab] text-white font-semibold py-3 rounded-xl hover:bg-[#00327d] transition-colors text-[14px] flex items-center justify-center gap-2"
+              className="w-full bg-[#1E1E1E] text-white font-semibold py-3 rounded-xl hover:bg-[#111111] transition-colors text-[14px] flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[18px]">lock_open</span>
               Entrar
@@ -977,7 +1078,7 @@ export default function AdminPage() {
           </form>
 
           <p className="text-[10px] text-center text-[#737784]">
-            Accede en: <code className="bg-[#eaedff] px-1.5 py-0.5 rounded text-[#0047ab]">tudominio.com/admin</code>
+            Accede en: <code className="bg-[#FFF5D6] px-1.5 py-0.5 rounded text-[#1E1E1E]">tudominio.com/admin</code>
           </p>
         </div>
       </div>
@@ -986,21 +1087,21 @@ export default function AdminPage() {
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#f2f3ff]">
-      <header className="bg-white border-b border-[#dae2fd] sticky top-0 z-50">
+    <div className="min-h-screen bg-[#FFF9F0]">
+      <header className="bg-white border-b border-[#F0E8C8] sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#0047ab] rounded-xl flex items-center justify-center">
+            <div className="w-9 h-9 bg-[#1E1E1E] rounded-xl flex items-center justify-center">
               <span className="material-symbols-outlined text-white text-[18px]">admin_panel_settings</span>
             </div>
             <div>
               <h1 className="text-[15px] font-bold text-[#131b2e] leading-none">Panel de Desarrollador</h1>
-              <p className="text-[11px] text-[#434653]">SublimeArt Premium · Supabase</p>
+              <p className="text-[11px] text-[#434653]">Sublimax Navojoa · Supabase</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <a href="/" target="_blank" className="text-[12px] text-[#434653] hover:text-[#0047ab] flex items-center gap-1 transition-colors">
+            <a href="/" target="_blank" className="text-[12px] text-[#434653] hover:text-[#F0A500] flex items-center gap-1 transition-colors">
               <span className="material-symbols-outlined text-[15px]">open_in_new</span>
               Ver sitio
             </a>
@@ -1016,7 +1117,7 @@ export default function AdminPage() {
               onClick={handleSave}
               disabled={saving}
               className={`text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all flex items-center gap-1.5
-                ${saved ? "bg-green-500 text-white" : "bg-[#0047ab] text-white hover:bg-[#00327d] disabled:opacity-60"}`}
+                ${saved ? "bg-green-500 text-white" : "bg-[#1E1E1E] text-white hover:bg-[#111111] disabled:opacity-60"}`}
             >
               <span className="material-symbols-outlined text-[16px]">
                 {saved ? "check" : saving ? "hourglass_empty" : "save"}
@@ -1027,7 +1128,7 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <div className="bg-white border-b border-[#dae2fd]">
+      <div className="bg-white border-b border-[#F0E8C8]">
         <div className="max-w-5xl mx-auto px-4 md:px-6">
           <div className="flex gap-1">
             {TABS.map((tab) => (
@@ -1035,7 +1136,7 @@ export default function AdminPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-5 py-3.5 text-[13px] font-semibold border-b-2 transition-all
-                  ${activeTab === tab.id ? "border-[#0047ab] text-[#0047ab]" : "border-transparent text-[#434653] hover:text-[#131b2e]"}`}
+                  ${activeTab === tab.id ? "border-[#1E1E1E] text-[#1E1E1E]" : "border-transparent text-[#434653] hover:text-[#131b2e]"}`}
               >
                 <span className="material-symbols-outlined text-[17px]">{tab.icon}</span>
                 {tab.label}
@@ -1048,7 +1149,7 @@ export default function AdminPage() {
       <main className="max-w-5xl mx-auto px-4 md:px-6 py-8">
         {loading ? (
           <div className="flex items-center justify-center py-20 gap-3 text-[#434653]">
-            <div className="w-6 h-6 border-2 border-[#0047ab] border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-[#1E1E1E] border-t-transparent rounded-full animate-spin" />
             Cargando configuración desde Supabase…
           </div>
         ) : (
