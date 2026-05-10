@@ -8,7 +8,33 @@
 
 import type { QuoteFormData } from "@/lib/validations";
 
+// ── Attachment helper ────────────────────────────────────────────────────────
+
+/**
+ * Parses a base64 data URI like "data:image/jpeg;base64,/9j/4AAQ..."
+ * and returns the raw base64 string + MIME type.
+ * Returns null if the string is not a valid data URI.
+ */
+function parseDataUri(dataUri: string): { mimeType: string; base64: string } | null {
+  const match = dataUri.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mimeType: match[1], base64: match[2] };
+}
+
+/** Maps MIME type to a file extension */
+function mimeToExt(mime: string): string {
+  const map: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/jpg":  "jpg",
+    "image/png":  "png",
+    "image/webp": "webp",
+    "image/gif":  "gif",
+  };
+  return map[mime] ?? "jpg";
+}
+
 // ── HTML Email Template ─────────────────────────────────────────────────────
+
 function buildEmailHTML(data: QuoteFormData): string {
   const additionalMessage = data.additionalMessage || "—";
 
@@ -29,15 +55,19 @@ function buildEmailHTML(data: QuoteFormData): string {
           true
         );
 
-  // Reference image block
+  // Reference image block — now shows "ver adjunto" instead of inline base64
   const imageBlock = data.referenceImageBase64
     ? `
-    <div style="margin-bottom:20px;padding:16px;background:#f2f3ff;border-radius:12px;border-left:4px solid #712ae2;">
-      <p style="margin:0 0 8px;color:#737784;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">
-        🖼️ Imagen de referencia
+    <div style="margin-bottom:20px;padding:16px;background:#f0f4ff;border-radius:12px;
+                border-left:4px solid #712ae2;">
+      <p style="margin:0 0 6px;color:#737784;font-size:11px;font-weight:600;
+                letter-spacing:0.05em;text-transform:uppercase;">🖼️ Imagen de referencia</p>
+      <p style="margin:0;color:#131b2e;font-size:14px;line-height:1.5;">
+        El cliente adjuntó una imagen de referencia.<br/>
+        <span style="color:#737784;font-size:12px;">
+          📎 Revisa el archivo adjunto <strong>imagen-referencia.*</strong> en este correo.
+        </span>
       </p>
-      <img src="${data.referenceImageBase64}" alt="Imagen de referencia del cliente"
-           style="max-width:100%;max-height:400px;border-radius:8px;border:1px solid #e2e7ff;display:block;" />
     </div>`
     : field("🖼️ Imagen de referencia", "No se adjuntó imagen");
 
@@ -78,16 +108,14 @@ function buildEmailHTML(data: QuoteFormData): string {
                          font-size:20px;font-weight:600;">
                 📋 Datos del cliente
               </h2>
-
               ${field("👤 Nombre", data.name)}
               ${field("📧 Correo electrónico", `<a href="mailto:${data.email}" style="color:#0047ab;">${data.email}</a>`)}
-              ${field("📱 Teléfono / WhatsApp", `<a href="https://wa.me/${data.phone.replace(/\D/g, '')}" style="color:#0047ab;">${data.phone}</a>`)}
+              ${field("📱 Teléfono / WhatsApp", `<a href="https://wa.me/${data.phone.replace(/\D/g, "")}" style="color:#0047ab;">${data.phone}</a>`)}
 
               <h2 style="margin:32px 0 16px;color:#131b2e;font-family:Montserrat,sans-serif;
                          font-size:20px;font-weight:600;">
                 🎁 Detalles del pedido
               </h2>
-
               ${field("📦 Producto", data.product)}
               ${field("🔢 Cantidad", data.quantity.toString())}
               ${field("🎨 Descripción del diseño", data.designDescription, true)}
@@ -96,14 +124,12 @@ function buildEmailHTML(data: QuoteFormData): string {
                          font-size:20px;font-weight:600;">
                 🚚 Entrega
               </h2>
-
               ${deliveryBlock}
 
               <h2 style="margin:32px 0 16px;color:#131b2e;font-family:Montserrat,sans-serif;
                          font-size:20px;font-weight:600;">
                 🖼️ Referencia visual
               </h2>
-
               ${imageBlock}
 
               ${data.additionalMessage ? `
@@ -140,10 +166,10 @@ function buildEmailHTML(data: QuoteFormData): string {
               </p>
               <p style="margin:8px 0 0;color:#c3c6d5;font-size:11px;">
                 ${new Date().toLocaleString("es-MX", {
-    dateStyle: "full",
-    timeStyle: "short",
-    timeZone: "America/Mexico_City",
-  })}
+                  dateStyle: "full",
+                  timeStyle: "short",
+                  timeZone: "America/Mexico_City",
+                })}
               </p>
             </td>
           </tr>
@@ -168,6 +194,7 @@ function field(label: string, value: string, multiline = false): string {
 }
 
 // ── Plain text fallback ─────────────────────────────────────────────────────
+
 function buildEmailText(data: QuoteFormData): string {
   const deliveryInfo =
     data.deliveryType === "recoger"
@@ -196,7 +223,7 @@ ${data.designDescription}
 ENTREGA:
 ${deliveryInfo}
 
-IMAGEN DE REFERENCIA: ${data.referenceImageBase64 ? "Sí (ver correo HTML)" : "No"}
+IMAGEN DE REFERENCIA: ${data.referenceImageBase64 ? "Sí — ver archivo adjunto" : "No adjuntó imagen"}
 
 MENSAJE ADICIONAL:
 ${data.additionalMessage || "—"}
@@ -207,14 +234,17 @@ Recibido: ${new Date().toLocaleString("es-MX", { timeZone: "America/Mexico_City"
 }
 
 // ── Subject ─────────────────────────────────────────────────────────────────
+
 function buildSubject(data: QuoteFormData): string {
   const delivery = data.deliveryType === "envio" ? "🚚 Envío" : "🏪 Recoger";
-  return `🎨 Nueva cotización: ${data.product} (${data.quantity} uds.) — ${data.name} · ${delivery}`;
+  const hasImage = data.referenceImageBase64 ? " 📎" : "";
+  return `🎨 Nueva cotización: ${data.product} (${data.quantity} uds.) — ${data.name} · ${delivery}${hasImage}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PUBLIC SEND FUNCTION
 // ─────────────────────────────────────────────────────────────────────────────
+
 export async function sendQuoteEmail(data: QuoteFormData): Promise<void> {
   const provider = process.env.EMAIL_PROVIDER ?? "resend";
   const toEmail = process.env.CONTACT_EMAIL;
@@ -227,16 +257,27 @@ export async function sendQuoteEmail(data: QuoteFormData): Promise<void> {
   const html = buildEmailHTML(data);
   const text = buildEmailText(data);
 
+  // Parse the image attachment (if any)
+  const imageAttachment = data.referenceImageBase64
+    ? parseDataUri(data.referenceImageBase64)
+    : null;
+
   if (provider === "resend") {
-    await sendViaResend({ toEmail, subject, html, text, replyTo: data.email });
+    await sendViaResend({ toEmail, subject, html, text, replyTo: data.email, imageAttachment });
   } else {
-    await sendViaNodemailer({ toEmail, subject, html, text, replyTo: data.email });
+    await sendViaNodemailer({ toEmail, subject, html, text, replyTo: data.email, imageAttachment });
   }
 }
 
 // ── Resend ──────────────────────────────────────────────────────────────────
+
 async function sendViaResend(opts: {
-  toEmail: string; subject: string; html: string; text: string; replyTo: string;
+  toEmail: string;
+  subject: string;
+  html: string;
+  text: string;
+  replyTo: string;
+  imageAttachment: { mimeType: string; base64: string } | null;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY no configurado");
@@ -246,6 +287,15 @@ async function sendViaResend(opts: {
   const { Resend } = await import("resend");
   const resend = new Resend(apiKey);
 
+  const attachments = opts.imageAttachment
+    ? [
+        {
+          filename: `imagen-referencia.${mimeToExt(opts.imageAttachment.mimeType)}`,
+          content: opts.imageAttachment.base64, // Resend accepts raw base64 string
+        },
+      ]
+    : [];
+
   const { error } = await resend.emails.send({
     from: `SublimArt Premium <${fromEmail}>`,
     to: opts.toEmail,
@@ -253,6 +303,7 @@ async function sendViaResend(opts: {
     subject: opts.subject,
     html: opts.html,
     text: opts.text,
+    attachments,
   });
 
   if (error) {
@@ -261,8 +312,14 @@ async function sendViaResend(opts: {
 }
 
 // ── Nodemailer / SMTP ───────────────────────────────────────────────────────
+
 async function sendViaNodemailer(opts: {
-  toEmail: string; subject: string; html: string; text: string; replyTo: string;
+  toEmail: string;
+  subject: string;
+  html: string;
+  text: string;
+  replyTo: string;
+  imageAttachment: { mimeType: string; base64: string } | null;
 }): Promise<void> {
   const emailUser = process.env.EMAIL_USER;
   const emailPass = process.env.EMAIL_PASS;
@@ -278,6 +335,16 @@ async function sendViaNodemailer(opts: {
     auth: { user: emailUser, pass: emailPass },
   });
 
+  const attachments = opts.imageAttachment
+    ? [
+        {
+          filename: `imagen-referencia.${mimeToExt(opts.imageAttachment.mimeType)}`,
+          content: Buffer.from(opts.imageAttachment.base64, "base64"),
+          contentType: opts.imageAttachment.mimeType,
+        },
+      ]
+    : [];
+
   await transporter.sendMail({
     from: `"SublimArt Premium" <${emailUser}>`,
     to: opts.toEmail,
@@ -285,5 +352,6 @@ async function sendViaNodemailer(opts: {
     subject: opts.subject,
     html: opts.html,
     text: opts.text,
+    attachments,
   });
 }
