@@ -471,25 +471,6 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
   const categories = config.gallery;
   const update = (updated: GalleryCategory[]) => onChange({ ...config, gallery: updated });
 
-  // Cover image upload
-  const uploadCover = async (catId: number, file: File) => {
-    setUploading(`cover-${catId}`);
-    setError("");
-    try {
-      const url = await uploadImage(file, `gallery/item-${catId}.jpg`);
-      update(categories.map((c) => c.id === catId ? { ...c, imageUrl: url } : c));
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Error al subir imagen");
-    } finally {
-      setUploading(null);
-    }
-  };
-
-  const removeCover = async (catId: number) => {
-    await deleteImage(`gallery/item-${catId}.jpg`);
-    update(categories.map((c) => c.id === catId ? { ...c, imageUrl: undefined } : c));
-  };
-
   // Extra image upload
   const uploadExtra = async (catId: number, imgId: number, file: File) => {
     const key = `extra-${catId}-${imgId}`;
@@ -634,7 +615,7 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
         <div className="bg-[#FFF5D6] rounded-2xl p-4 text-[13px] text-[#1E1E1E] flex gap-3 flex-1">
           <span className="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5">info</span>
           <p>
-            Cada categoría tiene portada + fotos de producto. <strong>Pasa el cursor sobre una imagen</strong> para editar su precio, nombre o destacarla con ⭐.
+            Cada categoría tiene fotos de producto. <strong>Pasa el cursor sobre una imagen</strong> para editar su precio, nombre o destacarla con ⭐.
           </p>
         </div>
         <button
@@ -668,22 +649,12 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
               {/* Header row */}
               <div className="flex items-center gap-3 px-5 py-4 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : cat.id)}>
                 <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${cat.gradient} flex items-center justify-center flex-shrink-0`}>
-                  {cat.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={cat.imageUrl} alt="" className="w-full h-full object-cover rounded-xl" />
-                  ) : (
-                    <span className="material-symbols-outlined text-[20px] text-[#1E1E1E]/60">{cat.icon}</span>
-                  )}
+                  <span className="material-symbols-outlined text-[20px] text-[#1E1E1E]/60">{cat.icon}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-[#131b2e] text-[14px] truncate">{cat.title}</span>
                     <span className="text-[10px] bg-[#FFF5D6] text-[#1E1E1E] px-2 py-0.5 rounded-full font-medium">{cat.badge}</span>
-                    {cat.imageUrl && (
-                      <span className="text-[10px] text-green-600 font-semibold flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[12px]">check_circle</span>Portada ✓
-                      </span>
-                    )}
                     {cat.images.filter((i) => i.imageUrl).length > 0 && (
                       <span className="text-[10px] text-[#434653]">
                         + {cat.images.filter((i) => i.imageUrl).length} foto{cat.images.filter((i) => i.imageUrl).length !== 1 ? "s" : ""}
@@ -755,23 +726,6 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
                         </div>
                         <span className="text-[12px] text-[#434653]">Tarjeta grande (2×2, destacada en portada)</span>
                       </label>
-                    </div>
-                  </div>
-
-                  {/* Cover image */}
-                  <div>
-                    <p className="text-[11px] font-semibold text-[#434653] uppercase tracking-wider mb-3">
-                      Imagen de portada <span className="text-[#737784] font-normal normal-case">(visible en la cuadrícula principal)</span>
-                    </p>
-                    <div className="max-w-sm">
-                      <ImageDropZone
-                        imageUrl={cat.imageUrl}
-                        label=""
-                        aspectClass={cat.large ? "aspect-[4/3]" : "aspect-video"}
-                        uploading={uploading === `cover-${cat.id}`}
-                        onUpload={(file) => uploadCover(cat.id, file)}
-                        onRemove={() => removeCover(cat.id)}
-                      />
                     </div>
                   </div>
 

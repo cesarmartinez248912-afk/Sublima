@@ -282,30 +282,32 @@ export default function ProductGallery() {
               const count = isDestacados
                 ? allItems.filter((i) => i.featured).length
                 : cat === "Todos"
-                  ? allItems.length
-                  : allItems.filter((i) => i.categoryTitle === cat).length;
+                ? allItems.length
+                : allItems.filter((i) => i.categoryTitle === cat).length;
               const isActive = activeTab === cat;
               return (
                 <button
                   key={cat}
                   onClick={() => setActiveTab(cat)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-semibold transition-all duration-200 border ${isActive
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-semibold transition-all duration-200 border ${
+                    isActive
                       ? isDestacados
                         ? "bg-amber-400 text-white border-amber-400 shadow-sm"
                         : "bg-primary-container text-on-primary-container border-primary-container shadow-sm"
                       : isDestacados
-                        ? "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100"
-                        : "bg-surface text-on-surface-variant border-outline-variant hover:border-primary-container/50 hover:text-on-surface"
-                    }`}
+                      ? "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100"
+                      : "bg-surface text-on-surface-variant border-outline-variant hover:border-primary-container/50 hover:text-on-surface"
+                  }`}
                 >
                   {cat}
                   <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isActive
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      isActive
                         ? "bg-white/20 text-inherit"
                         : isDestacados
-                          ? "bg-amber-200 text-amber-700"
-                          : "bg-surface-container text-outline"
-                      }`}
+                        ? "bg-amber-200 text-amber-700"
+                        : "bg-surface-container text-outline"
+                    }`}
                   >
                     {count}
                   </span>

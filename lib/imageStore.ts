@@ -28,7 +28,6 @@ export interface GalleryCategory {
   gradient: string;
   colSpan: string;
   large: boolean;
-  imageUrl?: string;
   images: GalleryImage[];
 }
 
@@ -251,7 +250,6 @@ function normalizeGalleryCategory(value: unknown, fallback: GalleryCategory, ind
     gradient: toString(item.gradient, fallback.gradient),
     colSpan: toString(item.colSpan, fallback.colSpan),
     large: typeof item.large === "boolean" ? item.large : fallback.large,
-    imageUrl: toString(item.imageUrl, "") || undefined,
     images,
   };
 }

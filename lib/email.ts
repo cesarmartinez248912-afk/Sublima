@@ -8,42 +8,81 @@
 
 import type { QuoteFormData } from "@/lib/validations";
 
-// ── Attachment helper ────────────────────────────────────────────────────────
+type EmailAttachment = {
+  filename: string;
+  content: string | Buffer;
+  contentType?: string;
+};
 
-/**
- * Parses a base64 data URI like "data:image/jpeg;base64,/9j/4AAQ..."
- * and returns the raw base64 string + MIME type.
- * Returns null if the string is not a valid data URI.
- */
+// ── Attachment helpers ───────────────────────────────────────────────────────
+
 function parseDataUri(dataUri: string): { mimeType: string; base64: string } | null {
   const match = dataUri.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
   if (!match) return null;
   return { mimeType: match[1], base64: match[2] };
 }
 
-/** Maps MIME type to a file extension */
 function mimeToExt(mime: string): string {
+  const normalized = mime.split(";")[0].trim();
   const map: Record<string, string> = {
     "image/jpeg": "jpg",
-    "image/jpg":  "jpg",
-    "image/png":  "png",
+    "image/jpg": "jpg",
+    "image/png": "png",
     "image/webp": "webp",
-    "image/gif":  "gif",
+    "image/gif": "gif",
   };
-  return map[mime] ?? "jpg";
+  return map[normalized] ?? "jpg";
+}
+
+function safeFilename(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 50) || "imagen";
+}
+
+async function fetchRemoteImageAttachment(url: string, filenamePrefix: string): Promise<EmailAttachment | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+
+    const contentType = (res.headers.get("content-type") ?? "image/jpeg").split(";")[0].trim();
+    if (!contentType.startsWith("image/")) return null;
+
+    const arrayBuffer = await res.arrayBuffer();
+    if (arrayBuffer.byteLength > 10 * 1024 * 1024) return null;
+
+    return {
+      filename: `${filenamePrefix}.${mimeToExt(contentType)}`,
+      content: Buffer.from(arrayBuffer).toString("base64"),
+      contentType,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function productLabel(data: QuoteFormData): string {
+  return data.selectedProductName?.trim() || data.product || "Producto seleccionado";
+}
+
+function productCategoryLabel(data: QuoteFormData): string | null {
+  return data.selectedProductCategory?.trim() || (data.selectedProductName?.trim() ? data.product : null);
 }
 
 // ── HTML Email Template ─────────────────────────────────────────────────────
 
 function buildEmailHTML(data: QuoteFormData): string {
   const additionalMessage = data.additionalMessage || "—";
+  const selectedProduct = productLabel(data);
+  const selectedCategory = productCategoryLabel(data);
 
-  // Delivery block
   const deliveryBlock =
     data.deliveryType === "recoger"
       ? field("🏪 Entrega", "Recoger en tienda")
       : field(
-          "🚚 Envío a domicilio",
+          "🚚 Entrega a domicilio",
           [
             data.deliveryStreet,
             data.deliveryColonia,
@@ -51,12 +90,27 @@ function buildEmailHTML(data: QuoteFormData): string {
             `C.P. ${data.deliveryZip ?? ""}`,
           ]
             .filter(Boolean)
-            .join("<br/>"),
-          true
+            .join("<br/>")
         );
 
-  // Reference image block — now shows "ver adjunto" instead of inline base64
-  const imageBlock = data.referenceImageBase64
+  const productBlock = data.selectedProductImageUrl
+    ? `
+    <div style="margin-bottom:20px;padding:16px;background:#f9f6ff;border-radius:12px;
+                border-left:4px solid #0047ab;">
+      <p style="margin:0 0 6px;color:#737784;font-size:11px;font-weight:600;
+                letter-spacing:0.05em;text-transform:uppercase;">🧾 Producto seleccionado</p>
+      <p style="margin:0 0 10px;color:#131b2e;font-size:14px;line-height:1.5;">
+        ${selectedCategory ? `${selectedCategory}<br/>` : ""}
+        <strong>${selectedProduct}</strong>
+      </p>
+      <img src="${data.selectedProductImageUrl}" alt="${selectedProduct}" style="max-width:100%;border-radius:10px;display:block;" />
+      <p style="margin:8px 0 0;color:#737784;font-size:12px;">
+        Si tu correo bloquea imágenes externas, la imagen también se adjunta cuando el proveedor lo permite.
+      </p>
+    </div>`
+    : field("🧾 Producto seleccionado", selectedCategory ? `${selectedCategory}<br/><strong>${selectedProduct}</strong>` : selectedProduct, true);
+
+  const referenceBlock = data.referenceImageBase64
     ? `
     <div style="margin-bottom:20px;padding:16px;background:#f0f4ff;border-radius:12px;
                 border-left:4px solid #712ae2;">
@@ -85,8 +139,6 @@ function buildEmailHTML(data: QuoteFormData): string {
         <table width="600" cellpadding="0" cellspacing="0"
                style="background:#ffffff;border-radius:24px;overflow:hidden;
                       box-shadow:0 10px 40px rgba(0,0,0,0.06);">
-
-          <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#00327d 0%,#0047ab 50%,#712ae2 100%);
                        padding:40px 48px;text-align:center;">
@@ -100,10 +152,8 @@ function buildEmailHTML(data: QuoteFormData): string {
             </td>
           </tr>
 
-          <!-- Body -->
           <tr>
             <td style="padding:48px;">
-
               <h2 style="margin:0 0 24px;color:#131b2e;font-family:Montserrat,sans-serif;
                          font-size:20px;font-weight:600;">
                 📋 Datos del cliente
@@ -116,7 +166,7 @@ function buildEmailHTML(data: QuoteFormData): string {
                          font-size:20px;font-weight:600;">
                 🎁 Detalles del pedido
               </h2>
-              ${field("📦 Producto", data.product)}
+              ${productBlock}
               ${field("🔢 Cantidad", data.quantity.toString())}
               ${field("🎨 Descripción del diseño", data.designDescription, true)}
 
@@ -130,7 +180,7 @@ function buildEmailHTML(data: QuoteFormData): string {
                          font-size:20px;font-weight:600;">
                 🖼️ Referencia visual
               </h2>
-              ${imageBlock}
+              ${referenceBlock}
 
               ${data.additionalMessage ? `
               <h2 style="margin:32px 0 16px;color:#131b2e;font-family:Montserrat,sans-serif;
@@ -139,11 +189,10 @@ function buildEmailHTML(data: QuoteFormData): string {
               </h2>
               ${field("Comentario", additionalMessage, true)}` : ""}
 
-              <!-- CTA -->
               <table width="100%" style="margin-top:40px;">
                 <tr>
                   <td align="center">
-                    <a href="mailto:${data.email}?subject=Re: Cotización ${data.product}"
+                    <a href="mailto:${data.email}?subject=Re:%20Cotización%20${encodeURIComponent(selectedProduct)}"
                        style="display:inline-block;background:linear-gradient(135deg,#0047ab,#712ae2);
                               color:#ffffff;text-decoration:none;padding:14px 32px;
                               border-radius:100px;font-size:14px;font-weight:600;
@@ -156,7 +205,6 @@ function buildEmailHTML(data: QuoteFormData): string {
             </td>
           </tr>
 
-          <!-- Footer -->
           <tr>
             <td style="background:#f2f3ff;padding:24px 48px;text-align:center;
                        border-top:1px solid #e2e7ff;">
@@ -173,7 +221,6 @@ function buildEmailHTML(data: QuoteFormData): string {
               </p>
             </td>
           </tr>
-
         </table>
       </td>
     </tr>
@@ -207,38 +254,51 @@ function buildEmailText(data: QuoteFormData): string {
           `C.P.: ${data.deliveryZip ?? "—"}`,
         ].join("\n");
 
-  return `
-NUEVA SOLICITUD DE COTIZACIÓN — Sublimax Navojoa
-===================================================
+  const selectedProduct = productLabel(data);
+  const selectedCategory = productCategoryLabel(data);
 
-NOMBRE:              ${data.name}
-CORREO:              ${data.email}
-TELÉFONO:            ${data.phone}
-PRODUCTO:            ${data.product}
-CANTIDAD:            ${data.quantity}
+  const lines = [
+    "NUEVA SOLICITUD DE COTIZACIÓN — Sublimax Navojoa",
+    "===================================================",
+    "",
+    `NOMBRE:              ${data.name}`,
+    `CORREO:              ${data.email}`,
+    `TELÉFONO:            ${data.phone}`,
+    `PRODUCTO:            ${data.product}`,
+    `PRODUCTO ELEGIDO:     ${selectedProduct}`,
+  ];
 
-DESCRIPCIÓN DEL DISEÑO:
-${data.designDescription}
+  if (selectedCategory) {
+    lines.push(`CATEGORÍA:           ${selectedCategory}`);
+  }
 
-ENTREGA:
-${deliveryInfo}
+  lines.push(
+    `IMAGEN DEL PRODUCTO:  ${data.selectedProductImageUrl ? "Sí — ver adjunto si el proveedor lo permite" : "No"}`,
+    `CANTIDAD:            ${data.quantity}`,
+    "",
+    "DESCRIPCIÓN DEL DISEÑO:",
+    data.designDescription,
+    "",
+    "ENTREGA:",
+    deliveryInfo,
+    "",
+    `IMAGEN DE REFERENCIA: ${data.referenceImageBase64 ? "Sí — ver archivo adjunto" : "No adjuntó imagen"}`,
+    "",
+    "MENSAJE ADICIONAL:",
+    data.additionalMessage || "—",
+    "",
+    "---",
+    `Recibido: ${new Date().toLocaleString("es-MX", { timeZone: "America/Mexico_City" })}`
+  );
 
-IMAGEN DE REFERENCIA: ${data.referenceImageBase64 ? "Sí — ver archivo adjunto" : "No adjuntó imagen"}
-
-MENSAJE ADICIONAL:
-${data.additionalMessage || "—"}
-
----
-Recibido: ${new Date().toLocaleString("es-MX", { timeZone: "America/Mexico_City" })}
-`.trim();
+  return lines.join("\n");
 }
-
-// ── Subject ─────────────────────────────────────────────────────────────────
 
 function buildSubject(data: QuoteFormData): string {
   const delivery = data.deliveryType === "envio" ? "🚚 Envío" : "🏪 Recoger";
-  const hasImage = data.referenceImageBase64 ? " 📎" : "";
-  return `🎨 Nueva cotización: ${data.product} (${data.quantity} uds.) — ${data.name} · ${delivery}${hasImage}`;
+  const hasImage = data.referenceImageBase64 || data.selectedProductImageUrl ? " 📎" : "";
+  const product = productLabel(data);
+  return `🎨 Nueva cotización: ${product} (${data.quantity} uds.) — ${data.name} · ${delivery}${hasImage}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -256,16 +316,31 @@ export async function sendQuoteEmail(data: QuoteFormData): Promise<void> {
   const subject = buildSubject(data);
   const html = buildEmailHTML(data);
   const text = buildEmailText(data);
+  const attachments: EmailAttachment[] = [];
 
-  // Parse the image attachment (if any)
-  const imageAttachment = data.referenceImageBase64
-    ? parseDataUri(data.referenceImageBase64)
-    : null;
+  if (data.referenceImageBase64) {
+    const parsed = parseDataUri(data.referenceImageBase64);
+    if (parsed) {
+      attachments.push({
+        filename: `imagen-referencia.${mimeToExt(parsed.mimeType)}`,
+        content: parsed.base64,
+        contentType: parsed.mimeType,
+      });
+    }
+  }
+
+  if (data.selectedProductImageUrl) {
+    const remote = await fetchRemoteImageAttachment(
+      data.selectedProductImageUrl,
+      `producto-seleccionado-${safeFilename(data.selectedProductName ?? data.product)}`
+    );
+    if (remote) attachments.push(remote);
+  }
 
   if (provider === "resend") {
-    await sendViaResend({ toEmail, subject, html, text, replyTo: data.email, imageAttachment });
+    await sendViaResend({ toEmail, subject, html, text, replyTo: data.email, attachments });
   } else {
-    await sendViaNodemailer({ toEmail, subject, html, text, replyTo: data.email, imageAttachment });
+    await sendViaNodemailer({ toEmail, subject, html, text, replyTo: data.email, attachments });
   }
 }
 
@@ -277,7 +352,7 @@ async function sendViaResend(opts: {
   html: string;
   text: string;
   replyTo: string;
-  imageAttachment: { mimeType: string; base64: string } | null;
+  attachments: EmailAttachment[];
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY no configurado");
@@ -287,14 +362,11 @@ async function sendViaResend(opts: {
   const { Resend } = await import("resend");
   const resend = new Resend(apiKey);
 
-  const attachments = opts.imageAttachment
-    ? [
-        {
-          filename: `imagen-referencia.${mimeToExt(opts.imageAttachment.mimeType)}`,
-          content: opts.imageAttachment.base64, // Resend accepts raw base64 string
-        },
-      ]
-    : [];
+  const attachments = opts.attachments.map((att) => ({
+    filename: att.filename,
+    content: typeof att.content === "string" ? att.content : att.content.toString("base64"),
+    contentType: att.contentType,
+  }));
 
   const { error } = await resend.emails.send({
     from: `Sublimax Navojoa <${fromEmail}>`,
@@ -319,7 +391,7 @@ async function sendViaNodemailer(opts: {
   html: string;
   text: string;
   replyTo: string;
-  imageAttachment: { mimeType: string; base64: string } | null;
+  attachments: EmailAttachment[];
 }): Promise<void> {
   const emailUser = process.env.EMAIL_USER;
   const emailPass = process.env.EMAIL_PASS;
@@ -335,15 +407,11 @@ async function sendViaNodemailer(opts: {
     auth: { user: emailUser, pass: emailPass },
   });
 
-  const attachments = opts.imageAttachment
-    ? [
-        {
-          filename: `imagen-referencia.${mimeToExt(opts.imageAttachment.mimeType)}`,
-          content: Buffer.from(opts.imageAttachment.base64, "base64"),
-          contentType: opts.imageAttachment.mimeType,
-        },
-      ]
-    : [];
+  const attachments = opts.attachments.map((att) => ({
+    filename: att.filename,
+    content: typeof att.content === "string" ? Buffer.from(att.content, "base64") : att.content,
+    contentType: att.contentType,
+  }));
 
   await transporter.sendMail({
     from: `"Sublimax Navojoa" <${emailUser}>`,

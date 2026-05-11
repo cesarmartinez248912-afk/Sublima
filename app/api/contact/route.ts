@@ -70,6 +70,15 @@ export async function POST(request: NextRequest) {
     ...parsed.data,
     name: sanitizeString(parsed.data.name),
     designDescription: sanitizeString(parsed.data.designDescription),
+    selectedProductName: parsed.data.selectedProductName
+      ? sanitizeString(parsed.data.selectedProductName)
+      : undefined,
+    selectedProductCategory: parsed.data.selectedProductCategory
+      ? sanitizeString(parsed.data.selectedProductCategory)
+      : undefined,
+    selectedProductImageUrl: parsed.data.selectedProductImageUrl
+      ? sanitizeString(parsed.data.selectedProductImageUrl)
+      : undefined,
     additionalMessage: parsed.data.additionalMessage
       ? sanitizeString(parsed.data.additionalMessage)
       : undefined,

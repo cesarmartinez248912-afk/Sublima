@@ -15,25 +15,35 @@ const infoLinks = [
 const scrollTo = (id: string) =>
   document.querySelector(id)?.scrollIntoView({ behavior: "smooth" });
 
+function FacebookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" aria-hidden="true" fill="currentColor">
+      <path d="M13.5 22v-8h2.7l.4-3h-3.1V8.7c0-.9.2-1.5 1.6-1.5h1.7V4.5c-.3 0-1.4-.1-2.7-.1-2.7 0-4.5 1.6-4.5 4.7V11H7v3h2.5v8h4z" />
+    </svg>
+  );
+}
+
+function InstagramIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" aria-hidden="true" fill="currentColor">
+      <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.2A4.8 4.8 0 1 1 7.2 12 4.81 4.81 0 0 1 12 7.2zm0 2a2.8 2.8 0 1 0 2.8 2.8A2.8 2.8 0 0 0 12 9.2zM17.8 6.5a1.2 1.2 0 1 1-1.2-1.2 1.2 1.2 0 0 1 1.2 1.2z" />
+    </svg>
+  );
+}
+
 export default function Footer() {
   const socialLinks = [
     {
       href: SITE_CONFIG.social.instagram,
       label: "Instagram",
-      icon: "photo_camera",
+      icon: <InstagramIcon />,
       show: !!SITE_CONFIG.social.instagram,
     },
     {
       href: SITE_CONFIG.social.facebook,
       label: "Facebook",
-      icon: "thumb_up",
+      icon: <FacebookIcon />,
       show: !!SITE_CONFIG.social.facebook,
-    },
-    {
-      href: getWhatsAppUrl(),
-      label: "WhatsApp",
-      icon: "chat",
-      show: true,
     },
   ].filter((s) => s.show);
 
@@ -52,7 +62,6 @@ export default function Footer() {
             <p className="text-[14px] text-on-surface-variant leading-relaxed">
               {SITE_CONFIG.description}
             </p>
-            {/* Social icons */}
             <div className="flex gap-3 mt-2">
               {socialLinks.map((s) => (
                 <a
@@ -63,9 +72,7 @@ export default function Footer() {
                   aria-label={s.label}
                   className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-primary-container hover:bg-primary-container hover:text-on-primary-container transition-all duration-200 hover:scale-105 active:scale-95"
                 >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {s.icon}
-                  </span>
+                  {s.icon}
                 </a>
               ))}
             </div>
@@ -101,12 +108,6 @@ export default function Footer() {
                 {l.label}
               </button>
             ))}
-            <a
-              href="#"
-              className="text-[14px] text-on-surface-variant hover:text-primary transition-colors"
-            >
-              Aviso de privacidad
-            </a>
           </div>
 
           {/* Contacto */}
@@ -147,7 +148,6 @@ export default function Footer() {
               </div>
             </div>
 
-            {/* CTA WhatsApp */}
             <a
               href={getWhatsAppUrl()}
               target="_blank"

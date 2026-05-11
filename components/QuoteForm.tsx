@@ -489,6 +489,9 @@ export default function QuoteForm() {
       email: "",
       phone: "+52 ",
       product: "",
+      selectedProductName: "",
+      selectedProductCategory: "",
+      selectedProductImageUrl: "",
       quantity: "",
       designDescription: "",
       deliveryType: undefined,
@@ -523,6 +526,9 @@ export default function QuoteForm() {
       // Set the select to the gallery category of this item
       const category = detail.category ?? "";
       setValue("product", category, { shouldValidate: false });
+      setValue("selectedProductName", detail.name, { shouldValidate: false });
+      setValue("selectedProductCategory", category, { shouldValidate: false });
+      setValue("selectedProductImageUrl", detail.imageUrl ?? "", { shouldValidate: false });
 
       // Reset flag after the onChange triggered by setValue has fired
       setTimeout(() => { isPrefillingRef.current = false; }, 0);
@@ -763,7 +769,12 @@ export default function QuoteForm() {
                           {...register("product", {
                             onChange: () => {
                               // Solo limpia el preview si el cambio lo hizo el usuario, no el prefill
-                              if (!isPrefillingRef.current) setPrefilledDetail(null);
+                              if (!isPrefillingRef.current) {
+                                setPrefilledDetail(null);
+                                setValue("selectedProductName", "", { shouldValidate: false });
+                                setValue("selectedProductCategory", "", { shouldValidate: false });
+                                setValue("selectedProductImageUrl", "", { shouldValidate: false });
+                              }
                             },
                           })}
                           disabled={isSubmitting}

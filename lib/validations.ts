@@ -38,6 +38,21 @@ export const quoteFormSchema = z
 
     product: z.string().min(1, "Selecciona un producto"),
 
+    selectedProductName: z
+      .string()
+      .max(120, "El nombre del producto seleccionado es demasiado largo")
+      .optional(),
+
+    selectedProductCategory: z
+      .string()
+      .max(120, "La categoría del producto seleccionado es demasiado larga")
+      .optional(),
+
+    selectedProductImageUrl: z
+      .string()
+      .max(2000, "La URL de la imagen del producto es demasiado larga")
+      .optional(),
+
     quantity: z
       .string()
       .min(1, "Ingresa la cantidad")
