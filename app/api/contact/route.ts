@@ -1,31 +1,24 @@
-/**
- * POST /api/contact
- * ─────────────────
- * Recibe la solicitud del formulario, valida los datos con Zod,
- * sanitiza los inputs y despacha el correo electrónico.
- *
- * Compatible con Vercel Edge/Serverless — sin estado persistente.
- */
-
 import { NextRequest, NextResponse } from "next/server";
 import { quoteFormSchema, sanitizeString } from "@/lib/validations";
 import { sendQuoteEmail } from "@/lib/email";
-// ── Rate-limit básico en memoria (por proceso) ────────────────────────────
+
 const ipTimestamps = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 3;
+
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
   const timestamps = (ipTimestamps.get(ip) ?? []).filter(
     (t) => now - t < RATE_LIMIT_WINDOW_MS
   );
+
   if (timestamps.length >= RATE_LIMIT_MAX) return true;
+
   timestamps.push(now);
   ipTimestamps.set(ip, timestamps);
   return false;
 }
 
-// ── Handler ─────────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -63,7 +56,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Sanitize strings
   const data = {
     ...parsed.data,
     name: sanitizeString(parsed.data.name),
@@ -92,8 +84,8 @@ export async function POST(request: NextRequest) {
     deliveryState: parsed.data.deliveryState
       ? sanitizeString(parsed.data.deliveryState)
       : undefined,
-    // referenceImageBase64 passes through as-is (already validated by Zod max length)
   };
+
   try {
     await sendQuoteEmail(data);
   } catch (err) {

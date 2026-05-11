@@ -82,16 +82,16 @@ function buildEmailHTML(data: QuoteFormData): string {
     data.deliveryType === "recoger"
       ? field("🏪 Entrega", "Recoger en tienda")
       : field(
-          "🚚 Entrega a domicilio",
-          [
-            data.deliveryStreet,
-            data.deliveryColonia,
-            `${data.deliveryCity ?? ""}, ${data.deliveryState ?? ""}`,
-            `C.P. ${data.deliveryZip ?? ""}`,
-          ]
-            .filter(Boolean)
-            .join("<br/>")
-        );
+        "🚚 Entrega a domicilio",
+        [
+          data.deliveryStreet,
+          data.deliveryColonia,
+          `${data.deliveryCity ?? ""}, ${data.deliveryState ?? ""}`,
+          `C.P. ${data.deliveryZip ?? ""}`,
+        ]
+          .filter(Boolean)
+          .join("<br/>")
+      );
 
   const productBlock = data.selectedProductImageUrl
     ? `
@@ -214,10 +214,10 @@ function buildEmailHTML(data: QuoteFormData): string {
               </p>
               <p style="margin:8px 0 0;color:#c3c6d5;font-size:11px;">
                 ${new Date().toLocaleString("es-MX", {
-                  dateStyle: "full",
-                  timeStyle: "short",
-                  timeZone: "America/Mexico_City",
-                })}
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: "America/Mexico_City",
+  })}
               </p>
             </td>
           </tr>
@@ -247,12 +247,12 @@ function buildEmailText(data: QuoteFormData): string {
     data.deliveryType === "recoger"
       ? "Recoger en tienda"
       : [
-          `Calle: ${data.deliveryStreet ?? "—"}`,
-          `Colonia: ${data.deliveryColonia ?? "—"}`,
-          `Ciudad: ${data.deliveryCity ?? "—"}`,
-          `Estado: ${data.deliveryState ?? "—"}`,
-          `C.P.: ${data.deliveryZip ?? "—"}`,
-        ].join("\n");
+        `Calle: ${data.deliveryStreet ?? "—"}`,
+        `Colonia: ${data.deliveryColonia ?? "—"}`,
+        `Ciudad: ${data.deliveryCity ?? "—"}`,
+        `Estado: ${data.deliveryState ?? "—"}`,
+        `C.P.: ${data.deliveryZip ?? "—"}`,
+      ].join("\n");
 
   const selectedProduct = productLabel(data);
   const selectedCategory = productCategoryLabel(data);
@@ -306,7 +306,7 @@ function buildSubject(data: QuoteFormData): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function sendQuoteEmail(data: QuoteFormData): Promise<void> {
-  const provider = process.env.EMAIL_PROVIDER ?? "resend";
+  const provider = process.env.EMAIL_PROVIDER ?? "nodemailer";
   const toEmail = process.env.CONTACT_EMAIL;
 
   if (!toEmail) {
@@ -393,18 +393,26 @@ async function sendViaNodemailer(opts: {
   replyTo: string;
   attachments: EmailAttachment[];
 }): Promise<void> {
-  const emailUser = process.env.EMAIL_USER;
-  const emailPass = process.env.EMAIL_PASS;
+  const emailUser = process.env.SMTP_USER;
+  const emailPass = process.env.SMTP_PASS;
+  const smtpHost = process.env.SMTP_HOST ?? "smtp.office365.com";
+  const smtpPort = Number(process.env.SMTP_PORT ?? "587");
 
   if (!emailUser || !emailPass) {
-    throw new Error("EMAIL_USER / EMAIL_PASS no configurados");
+    throw new Error("SMTP_USER / SMTP_PASS no configurados");
   }
 
   const nodemailer = await import("nodemailer");
 
   const transporter = nodemailer.default.createTransport({
-    service: "gmail",
-    auth: { user: emailUser, pass: emailPass },
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    requireTLS: smtpPort === 587,
+    auth: {
+      user: emailUser,
+      pass: emailPass,
+    },
   });
 
   const attachments = opts.attachments.map((att) => ({
