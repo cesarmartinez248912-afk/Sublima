@@ -1,7 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import FeaturedProducts from "@/components/FeaturedProducts";
-import ProductGallery from "@/components/ProductGallery";
 import Gallery from "@/components/Gallery";
 import QuoteForm from "@/components/QuoteForm";
 import Footer from "@/components/Footer";
@@ -13,7 +12,6 @@ export default function Home() {
       <Navbar />
       <Hero />
       <FeaturedProducts />
-      <ProductGallery />
       <Gallery />
       <QuoteForm />
       <Footer />

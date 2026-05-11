@@ -71,9 +71,8 @@ function FeaturedCard({
               src={product.imageUrl}
               alt={product.name}
               onLoad={() => setImgLoaded(true)}
-              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
-                imgLoaded ? "opacity-100" : "opacity-0"
-              }`}
+              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"
+                }`}
             />
           </>
         ) : (
@@ -87,7 +86,7 @@ function FeaturedCard({
 
         {/* Destacado badge */}
         <div className="absolute top-3 left-3 z-10">
-          <div className="badge-gradient text-[9px] tracking-widest">
+          <div className="badge-gradient text-[9px] tracking-widest flex items-center gap-1 px-2.5 py-1 rounded-full">
             <span className="material-symbols-outlined text-[11px]">star</span>
             Destacado
           </div>
@@ -171,7 +170,7 @@ function EmptyFeatured({ onCotizar }: { onCotizar: () => void }) {
       </div>
       <div className="text-center">
         <p className="text-on-surface font-semibold text-[16px] mb-1">Sin productos destacados aún</p>
-        <p className="text-on-surface-variant text-[14px]">Activa el switch "Destacado" en el panel admin para mostrar productos aquí.</p>
+        <p className="text-on-surface-variant text-[14px]">Activa la estrella ⭐ en el panel admin para mostrar productos aquí.</p>
       </div>
       <button
         onClick={onCotizar}
@@ -244,7 +243,7 @@ export default function FeaturedProducts() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
-            onClick={() => document.querySelector("#galeria-productos")?.scrollIntoView({ behavior: "smooth" })}
+            onClick={() => document.querySelector("#galeria")?.scrollIntoView({ behavior: "smooth" })}
             className="mt-6 md:mt-0 inline-flex items-center gap-1.5 text-primary-container text-[13px] font-semibold hover:underline transition-all flex-shrink-0"
           >
             Ver catálogo completo
