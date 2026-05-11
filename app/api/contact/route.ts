@@ -10,12 +10,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { quoteFormSchema, sanitizeString } from "@/lib/validations";
 import { sendQuoteEmail } from "@/lib/email";
-
+import nodemailer from "nodemailer";
 // ── Rate-limit básico en memoria (por proceso) ────────────────────────────
 const ipTimestamps = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 3;
-
+const transporter = nodemailer.createTransport({
+  host: "smtp.office365.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: "ventas.sublimax.nav@outlook.es",
+    pass: process.env.OUTLOOK_PASS,
+  },
+});
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
   const timestamps = (ipTimestamps.get(ip) ?? []).filter(
@@ -96,7 +104,12 @@ export async function POST(request: NextRequest) {
       : undefined,
     // referenceImageBase64 passes through as-is (already validated by Zod max length)
   };
-
+  await transporter.sendMail({
+    from: "ventas.sublimax.nav@outlook.es",
+    to: "ventas.sublimax.nav@outlook.es",
+    subject: "Nueva cotización",
+    html: "<h1>Nueva cotización</h1>",
+  });
   try {
     await sendQuoteEmail(data);
   } catch (err) {
