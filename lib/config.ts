@@ -13,10 +13,10 @@ export const SITE_CONFIG = {
   // ── Contacto ────────────────────────────────────────────────────────────
   // El número de WhatsApp se lee desde la variable de entorno NEXT_PUBLIC_WHATSAPP_NUMBER.
   // Si no está definida, usa este valor por defecto.
-  whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "526421000279",
+  whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "6421000279",
   whatsappMessage: "Hola, quiero cotizar un producto personalizado 🎨",
 
-  email: "sublimaxnavojoa23@gmail.com",
+  email: "ventas.sublimax.nav@outlook.es",
   emailPersonal: "Kendra_Gissel05@hotmail.com",
   phone: "64 21 000 279",
 
