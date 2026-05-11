@@ -105,7 +105,17 @@ export default function Products() {
 
                 {/* Precio — esquina superior derecha */}
                 <div className="absolute top-3 right-3 z-10">
-                  {product.price !== undefined ? (
+                  {product.priceMode === "quote" ? (
+                    <div className="bg-surface-container-high/90 backdrop-blur-sm text-on-surface-variant px-3 py-1.5 rounded-full text-[10px] font-semibold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[11px]">chat_bubble</span>
+                      A cotizar
+                    </div>
+                  ) : product.priceMode === "promo" && product.price !== undefined ? (
+                    <div className="bg-red-500 text-white px-3 py-1.5 rounded-full text-[12px] font-bold shadow-md flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">local_offer</span>
+                      {formatPrice(product.price)}
+                    </div>
+                  ) : product.price !== undefined ? (
                     <div className="bg-primary text-on-primary px-3 py-1.5 rounded-full text-[12px] font-bold shadow-md">
                       {formatPrice(product.price)}
                     </div>
@@ -137,11 +147,19 @@ export default function Products() {
 
                 {/* Precio grande + botón */}
                 <div className="space-y-3">
-                  {product.price !== undefined ? (
+                  {product.priceMode === "quote" ? (
+                    <div className="flex items-center gap-2 bg-surface-container py-2 px-3 rounded-xl">
+                      <span className="material-symbols-outlined text-[16px] text-primary-container">chat_bubble</span>
+                      <span className="text-[13px] font-semibold text-on-surface-variant">Precio a cotizar</span>
+                    </div>
+                  ) : product.priceMode === "promo" && product.price !== undefined ? (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[22px] font-bold text-red-500">{formatPrice(product.price)}</span>
+                      <span className="text-[11px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full">PROMO</span>
+                    </div>
+                  ) : product.price !== undefined ? (
                     <div className="flex items-baseline gap-1">
-                      <span className="text-[22px] font-bold text-on-surface">
-                        {formatPrice(product.price)}
-                      </span>
+                      <span className="text-[22px] font-bold text-on-surface">{formatPrice(product.price)}</span>
                       <span className="text-[12px] text-outline">c/u</span>
                     </div>
                   ) : (

@@ -33,9 +33,9 @@ export interface ProductConfig {
   icon: string;
   gradient: string;
   imageUrl?: string;
-  // ── Nuevos campos de precio ──────────────────────────────────────
-  price?: number;        // precio en MXN, undefined = sin precio aún
-  category?: string;     // categoría del producto
+  price?: number;
+  priceMode?: "fixed" | "quote" | "promo"; // fixed=precio fijo, quote=a cotizar, promo=en promoción
+  category?: string;
 }
 
 export interface HeroConfig {
@@ -249,6 +249,7 @@ function normalizeProduct(value: unknown, fallback: ProductConfig, index: number
     gradient: toString(item.gradient, fallback.gradient),
     imageUrl: toString(item.imageUrl, "") || undefined,
     price,
+    priceMode: (["fixed", "quote", "promo"].includes(toString(item.priceMode, "")) ? item.priceMode : "fixed") as "fixed" | "quote" | "promo",
     category: toString(item.category, fallback.category ?? ""),
   };
 }
@@ -269,9 +270,9 @@ export function normalizeSiteConfig(input: unknown): SiteConfig {
   const rawHero = cfg.hero;
   const hero = isRecord(rawHero)
     ? {
-        backgroundImageUrl:
-          toString(rawHero.backgroundImageUrl, "") || undefined,
-      }
+      backgroundImageUrl:
+        toString(rawHero.backgroundImageUrl, "") || undefined,
+    }
     : {};
 
   return {

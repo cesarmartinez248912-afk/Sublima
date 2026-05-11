@@ -91,7 +91,7 @@ function ImageDropZone({
     setDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -217,11 +217,11 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
           c.id !== catId
             ? c
             : {
-                ...c,
-                images: c.images.map((img) =>
-                  img.id === imgId ? { ...img, imageUrl: url } : img
-                ),
-              }
+              ...c,
+              images: c.images.map((img) =>
+                img.id === imgId ? { ...img, imageUrl: url } : img
+              ),
+            }
         )
       );
     } catch (e: unknown) {
@@ -306,11 +306,11 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
           c.id !== catId
             ? c
             : {
-                ...c,
-                images: c.images.map((img) =>
-                  img.id === imgId ? { ...img, imageUrl: url } : img
-                ),
-              }
+              ...c,
+              images: c.images.map((img) =>
+                img.id === imgId ? { ...img, imageUrl: url } : img
+              ),
+            }
         );
         onChange({ ...config, gallery: latestCategories });
         setBulkUploading({ catId, done: i + 1, total: toUpload.length });
@@ -934,16 +934,48 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
 
               {/* Precio y Categoría — campos clave */}
               <div className="bg-[#FFF9F0] border border-[#F0E8C8] rounded-xl p-3 space-y-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#F0A500]">Precio & Categoría</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#F0A500]">💲 Precio & Categoría</p>
+
+                {/* Modo de precio */}
+                <div>
+                  <label className="block text-[10px] text-[#737784] mb-1.5">Tipo de precio</label>
+                  <div className="flex gap-2">
+                    {(["fixed", "quote", "promo"] as const).map((mode) => {
+                      const labels = { fixed: "Precio fijo", quote: "A cotizar", promo: "En promoción" };
+                      const icons = { fixed: "sell", quote: "chat_bubble", promo: "local_offer" };
+                      const current = (product as ProductConfig & { priceMode?: string }).priceMode ?? "fixed";
+                      const active = current === mode;
+                      return (
+                        <button
+                          key={mode}
+                          onClick={() => updateMeta(product.id, { priceMode: mode } as Partial<ProductConfig>)}
+                          className={`flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-xl text-[10px] font-semibold border transition-all ${active
+                            ? "bg-[#1E1E1E] text-white border-[#1E1E1E]"
+                            : "bg-white text-[#737784] border-[#c3c6d5] hover:border-[#F0A500]"
+                            }`}
+                        >
+                          <span className="material-symbols-outlined text-[14px]">{icons[mode]}</span>
+                          {labels[mode]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] text-[#737784] mb-1">Precio (MXN)</label>
+                    <label className="block text-[10px] text-[#737784] mb-1">
+                      {(product as ProductConfig & { priceMode?: string }).priceMode === "promo"
+                        ? "Precio promocional (MXN)"
+                        : "Precio (MXN)"}
+                    </label>
                     <div className="relative">
                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[12px] text-[#737784] font-semibold">$</span>
                       <input
                         type="number"
                         min="0"
-                        step="0.01"
+                        step="1"
+                        disabled={(product as ProductConfig & { priceMode?: string }).priceMode === "quote"}
                         value={product.price ?? ""}
                         onChange={(e) => {
                           const val = e.target.value === "" ? undefined : parseFloat(e.target.value);
@@ -951,17 +983,22 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
                             updateMeta(product.id, { price: val });
                           }
                         }}
-                        placeholder="Sin precio"
-                        className="w-full text-[12px] pl-6 pr-2 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white"
+                        placeholder={
+                          (product as ProductConfig & { priceMode?: string }).priceMode === "quote"
+                            ? "— a cotizar —"
+                            : "0"
+                        }
+                        className="w-full text-[12px] pl-6 pr-2 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white disabled:bg-[#f5f5f5] disabled:text-[#bbb]"
                       />
                     </div>
                     {product.price !== undefined && isValidPrice(product.price) && (
-                      <p className="text-[10px] text-[#1E1E1E] font-semibold mt-1">
-                        = {formatPrice(product.price)}
+                      <p className="text-[10px] text-[#1E1E1E] font-bold mt-1 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[11px] text-[#F0A500]">check_circle</span>
+                        {formatPrice(product.price)}
                       </p>
                     )}
                     {product.price !== undefined && !isValidPrice(product.price) && (
-                      <p className="text-[10px] text-red-500 mt-1">Precio inválido</p>
+                      <p className="text-[10px] text-red-500 mt-1">⚠ Precio inválido</p>
                     )}
                   </div>
                   <div>

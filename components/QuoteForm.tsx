@@ -142,11 +142,10 @@ function PhoneInput({
 
   return (
     <div
-      className={`flex rounded-xl border overflow-hidden transition-all duration-200 bg-surface ${
-        error
-          ? "border-error focus-within:ring-2 focus-within:ring-error"
-          : "border-outline-variant focus-within:ring-2 focus-within:ring-primary-container focus-within:border-primary-container"
-      } ${disabled ? "opacity-50" : ""}`}
+      className={`flex rounded-xl border overflow-hidden transition-all duration-200 bg-surface ${error
+        ? "border-error focus-within:ring-2 focus-within:ring-error"
+        : "border-outline-variant focus-within:ring-2 focus-within:ring-primary-container focus-within:border-primary-container"
+        } ${disabled ? "opacity-50" : ""}`}
     >
       {/* Country code dropdown */}
       <div className="relative flex-shrink-0">
@@ -254,13 +253,12 @@ function ImageUpload({
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`relative rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer overflow-hidden ${
-          isDragging
-            ? "border-primary-container bg-primary-container/5 scale-[1.01]"
-            : value
+        className={`relative rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer overflow-hidden ${isDragging
+          ? "border-primary-container bg-primary-container/5 scale-[1.01]"
+          : value
             ? "border-primary-container/40 bg-primary-container/3"
             : "border-outline-variant hover:border-primary-container/50 hover:bg-surface-container-low"
-        } ${disabled ? "pointer-events-none opacity-50" : ""}`}
+          } ${disabled ? "pointer-events-none opacity-50" : ""}`}
         style={{ minHeight: "140px" }}
       >
         <AnimatePresence mode="wait">
@@ -314,7 +312,7 @@ function ImageUpload({
 
               {/* Change hint */}
               <p className="text-[11px] text-outline text-right flex-shrink-0 hidden sm:block">
-                Clic para<br/>cambiar
+                Clic para<br />cambiar
               </p>
             </motion.div>
           ) : (
@@ -399,13 +397,12 @@ function DeliverySelector({
               type="button"
               onClick={() => !disabled && onChange(opt.key)}
               disabled={disabled}
-              className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-2xl border-2 text-center transition-all duration-200 cursor-pointer ${
-                active
-                  ? opt.key === "recoger"
-                    ? "border-primary-container bg-primary-container/8 shadow-sm"
-                    : "border-secondary bg-secondary/8 shadow-sm"
-                  : "border-outline-variant hover:border-outline bg-surface"
-              } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-2xl border-2 text-center transition-all duration-200 cursor-pointer ${active
+                ? opt.key === "recoger"
+                  ? "border-primary-container bg-primary-container/8 shadow-sm"
+                  : "border-secondary bg-secondary/8 shadow-sm"
+                : "border-outline-variant hover:border-outline bg-surface"
+                } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
               style={{
                 background: active
                   ? opt.key === "recoger"
@@ -415,13 +412,12 @@ function DeliverySelector({
               }}
             >
               <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
-                  active
-                    ? opt.key === "recoger"
-                      ? "bg-primary-container text-on-primary-container"
-                      : "bg-secondary text-on-secondary"
-                    : "bg-surface-container text-on-surface-variant"
-                }`}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${active
+                  ? opt.key === "recoger"
+                    ? "bg-primary-container text-on-primary-container"
+                    : "bg-secondary text-on-secondary"
+                  : "bg-surface-container text-on-surface-variant"
+                  }`}
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>
                   {opt.icon}
@@ -739,7 +735,7 @@ export default function QuoteForm() {
                       <PhoneInput
                         value={phoneValue ?? "+52 "}
                         onChange={(val) => setValue("phone", val, { shouldValidate: true })}
-                        onBlur={() => {}}
+                        onBlur={() => { }}
                         disabled={isSubmitting}
                         error={errors.phone?.message}
                       />
@@ -767,15 +763,15 @@ export default function QuoteForm() {
                           <option value="">Selecciona un producto…</option>
                           {products.length > 0
                             ? products.map((p) => (
-                                <option key={p.id} value={p.name}>{p.name}</option>
-                              ))
-                            : /* fallback estático si Supabase tarda */ [
-                                "Tazas Premium","Termos / Botellas","Playeras","Mousepads",
-                                "Fundas para celular","Cojines","Llaveros","Cuadros / Lienzos",
-                                "Otro (especificar en descripción)",
-                              ].map((name) => (
-                                <option key={name} value={name}>{name}</option>
-                              ))}
+                              <option key={p.id} value={p.name}>{p.name}</option>
+                            ))
+                            : /* fallback estático si Supabase tarda */[
+                              "Tazas Premium", "Termos / Botellas", "Playeras", "Mousepads",
+                              "Fundas para celular", "Cojines", "Llaveros", "Cuadros / Lienzos",
+                              "Otro (especificar en descripción)",
+                            ].map((name) => (
+                              <option key={name} value={name}>{name}</option>
+                            ))}
                         </select>
                       </FormField>
 
