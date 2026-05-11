@@ -71,8 +71,9 @@ function FeaturedCard({
               src={product.imageUrl}
               alt={product.name}
               onLoad={() => setImgLoaded(true)}
-              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"
-                }`}
+              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                imgLoaded ? "opacity-100" : "opacity-0"
+              }`}
             />
           </>
         ) : (

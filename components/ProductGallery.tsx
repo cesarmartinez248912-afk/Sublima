@@ -87,8 +87,9 @@ function GalleryCard({
               alt={product.name}
               onLoad={() => setImgLoaded(true)}
               loading="lazy"
-              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"
-                }`}
+              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                imgLoaded ? "opacity-100" : "opacity-0"
+              }`}
             />
           </>
         ) : (
@@ -246,15 +247,17 @@ export default function ProductGallery() {
                 <button
                   key={cat}
                   onClick={() => setActiveTab(cat)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-semibold transition-all duration-200 border ${activeTab === cat
-                    ? "bg-primary-container text-on-primary-container border-primary-container shadow-sm"
-                    : "bg-surface text-on-surface-variant border-outline-variant hover:border-primary-container/50 hover:text-on-surface"
-                    }`}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-semibold transition-all duration-200 border ${
+                    activeTab === cat
+                      ? "bg-primary-container text-on-primary-container border-primary-container shadow-sm"
+                      : "bg-surface text-on-surface-variant border-outline-variant hover:border-primary-container/50 hover:text-on-surface"
+                  }`}
                 >
                   {cat}
                   <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === cat ? "bg-white/20 text-on-primary-container" : "bg-surface-container text-outline"
-                      }`}
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      activeTab === cat ? "bg-white/20 text-on-primary-container" : "bg-surface-container text-outline"
+                    }`}
                   >
                     {count}
                   </span>
