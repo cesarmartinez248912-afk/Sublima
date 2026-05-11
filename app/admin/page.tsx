@@ -8,12 +8,14 @@ import {
   deleteImage,
   DEFAULT_GALLERY,
   DEFAULT_PRODUCTS,
+  PRODUCT_CATEGORIES,
+  formatPrice,
+  isValidPrice,
   type SiteConfig,
   type GalleryCategory,
   type GalleryImage,
   type ProductConfig,
 } from "@/lib/imageStore";
-
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "admin";
 
 type Tab = "gallery" | "products" | "hero";
@@ -669,7 +671,9 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
     badge: "",
     description: "",
     icon: "stars",
-    gradient: "from-blue-50 to-indigo-50",
+    gradient: "from-amber-50 to-yellow-50",
+    price: undefined,
+    category: "",
   });
 
   const products = config.products;
@@ -709,7 +713,7 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
     if (!newProduct.name.trim()) return;
     const id = nextId(products);
     update([...products, { id, ...newProduct }]);
-    setNewProduct({ name: "", badge: "", description: "", icon: "stars", gradient: "from-blue-50 to-indigo-50" });
+    setNewProduct({ name: "", badge: "", description: "", icon: "stars", gradient: "from-amber-50 to-yellow-50", price: undefined, category: "" });
     setShowAddForm(false);
   };
 
@@ -751,6 +755,42 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
                 placeholder="Ej: Algodón Premium"
                 className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white"
               />
+            </div>
+          </div>
+
+          {/* Precio y Categoría */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] text-[#737784] mb-1">Precio (MXN)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-[#737784] font-semibold">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={newProduct.price ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? undefined : Math.max(0, parseFloat(e.target.value));
+                    setNewProduct({ ...newProduct, price: isNaN(val as number) ? undefined : val });
+                  }}
+                  placeholder="0.00"
+                  className="w-full text-[13px] pl-7 pr-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white"
+                />
+              </div>
+              <p className="text-[10px] text-[#737784] mt-1">Déjalo vacío si el precio varía</p>
+            </div>
+            <div>
+              <label className="block text-[11px] text-[#737784] mb-1">Categoría</label>
+              <select
+                value={newProduct.category ?? ""}
+                onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white"
+              >
+                <option value="">Sin categoría</option>
+                {PRODUCT_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div>
@@ -890,6 +930,54 @@ function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: S
                   rows={2}
                   className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-[#faf8ff] resize-none"
                 />
+              </div>
+
+              {/* Precio y Categoría — campos clave */}
+              <div className="bg-[#FFF9F0] border border-[#F0E8C8] rounded-xl p-3 space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#F0A500]">Precio & Categoría</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-[#737784] mb-1">Precio (MXN)</label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[12px] text-[#737784] font-semibold">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={product.price ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? undefined : parseFloat(e.target.value);
+                          if (val === undefined || (isValidPrice(val) && val >= 0)) {
+                            updateMeta(product.id, { price: val });
+                          }
+                        }}
+                        placeholder="Sin precio"
+                        className="w-full text-[12px] pl-6 pr-2 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white"
+                      />
+                    </div>
+                    {product.price !== undefined && isValidPrice(product.price) && (
+                      <p className="text-[10px] text-[#1E1E1E] font-semibold mt-1">
+                        = {formatPrice(product.price)}
+                      </p>
+                    )}
+                    {product.price !== undefined && !isValidPrice(product.price) && (
+                      <p className="text-[10px] text-red-500 mt-1">Precio inválido</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#737784] mb-1">Categoría</label>
+                    <select
+                      value={product.category ?? ""}
+                      onChange={(e) => updateMeta(product.id, { category: e.target.value })}
+                      className="w-full text-[12px] px-2 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white"
+                    >
+                      <option value="">Sin categoría</option>
+                      {PRODUCT_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div>

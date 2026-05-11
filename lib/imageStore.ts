@@ -33,6 +33,9 @@ export interface ProductConfig {
   icon: string;
   gradient: string;
   imageUrl?: string;
+  // ── Nuevos campos de precio ──────────────────────────────────────
+  price?: number;        // precio en MXN, undefined = sin precio aún
+  category?: string;     // categoría del producto
 }
 
 export interface HeroConfig {
@@ -49,6 +52,23 @@ export type GalleryItemConfig = GalleryCategory;
 
 type UnknownRecord = Record<string, unknown>;
 
+// ─── Price helpers ─────────────────────────────────────────────────────────────
+
+/** Formatea un número como precio en MXN: 1234.5 → "$1,234.50 MXN" */
+export function formatPrice(price: number): string {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(price);
+}
+
+/** Valida que el precio sea un número positivo */
+export function isValidPrice(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
 // ─── Defaults ────────────────────────────────────────────────────────────────
 
 export const DEFAULT_GALLERY: GalleryCategory[] = [
@@ -56,7 +76,7 @@ export const DEFAULT_GALLERY: GalleryCategory[] = [
     id: 1,
     title: "Tazas",
     badge: "Cerámica",
-    gradient: "from-blue-100 via-indigo-50 to-blue-50",
+    gradient: "from-amber-50 to-yellow-50",
     icon: "coffee",
     colSpan: "md:col-span-2 md:row-span-2",
     large: true,
@@ -104,42 +124,63 @@ export const DEFAULT_GALLERY: GalleryCategory[] = [
   },
 ];
 
+export const PRODUCT_CATEGORIES = [
+  "Tazas personalizadas",
+  "Termos / Botellas",
+  "Playeras",
+  "Mousepads",
+  "Fundas para celular",
+  "Cojines",
+  "Llaveros",
+  "Cuadros / Lienzos",
+  "Rompecabezas",
+  "Platos decorativos",
+  "Almohadas",
+  "Agendas / Libretas",
+  "Gorras",
+  "Otro",
+] as const;
+
 export const DEFAULT_PRODUCTS: ProductConfig[] = [
   {
     id: 1,
     name: "Tazas Premium",
     badge: "Cerámica AAA",
-    description:
-      "Ideal para regalos corporativos o uso personal. Resistente a microondas y lavavajillas.",
+    description: "Ideal para regalos corporativos o uso personal. Resistente a microondas y lavavajillas.",
     icon: "coffee",
-    gradient: "from-blue-50 to-indigo-50",
+    gradient: "from-amber-50 to-yellow-50",
+    category: "Tazas personalizadas",
+    price: 120,
   },
   {
     id: 2,
     name: "Termos",
     badge: "Acero Inoxidable",
-    description:
-      "Doble pared al vacío. Mantiene la temperatura por horas con estilo único.",
+    description: "Doble pared al vacío. Mantiene la temperatura por horas con estilo único.",
     icon: "water_bottle",
-    gradient: "from-purple-50 to-blue-50",
+    gradient: "from-gray-50 to-slate-100",
+    category: "Termos / Botellas",
+    price: 250,
   },
   {
     id: 3,
     name: "Playeras",
     badge: "Tacto Algodón",
-    description:
-      "Comodidad inigualable con impresión que no se siente al tacto ni se decolora.",
+    description: "Comodidad inigualable con impresión que no se siente al tacto ni se decolora.",
     icon: "checkroom",
     gradient: "from-indigo-50 to-sky-50",
+    category: "Playeras",
+    price: 180,
   },
   {
     id: 4,
     name: "Mousepads",
     badge: "Neopreno Alta Densidad",
-    description:
-      "Superficie optimizada para precisión. Diseño de borde a borde sin desgaste.",
+    description: "Superficie optimizada para precisión. Diseño de borde a borde sin desgaste.",
     icon: "mouse",
     gradient: "from-sky-50 to-cyan-50",
+    category: "Mousepads",
+    price: 150,
   },
 ];
 
@@ -193,6 +234,12 @@ function normalizeGalleryCategory(value: unknown, fallback: GalleryCategory, ind
 
 function normalizeProduct(value: unknown, fallback: ProductConfig, index: number): ProductConfig {
   const item = isRecord(value) ? value : {};
+  const rawPrice = item.price;
+  const price =
+    typeof rawPrice === "number" && Number.isFinite(rawPrice) && rawPrice >= 0
+      ? rawPrice
+      : undefined;
+
   return {
     id: toNumber(item.id, fallback.id ?? index + 1),
     name: toString(item.name, fallback.name),
@@ -201,6 +248,8 @@ function normalizeProduct(value: unknown, fallback: ProductConfig, index: number
     icon: toString(item.icon, fallback.icon),
     gradient: toString(item.gradient, fallback.gradient),
     imageUrl: toString(item.imageUrl, "") || undefined,
+    price,
+    category: toString(item.category, fallback.category ?? ""),
   };
 }
 
@@ -220,9 +269,9 @@ export function normalizeSiteConfig(input: unknown): SiteConfig {
   const rawHero = cfg.hero;
   const hero = isRecord(rawHero)
     ? {
-      backgroundImageUrl:
-        toString(rawHero.backgroundImageUrl, "") || undefined,
-    }
+        backgroundImageUrl:
+          toString(rawHero.backgroundImageUrl, "") || undefined,
+      }
     : {};
 
   return {

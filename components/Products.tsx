@@ -2,7 +2,12 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { getSiteConfig, DEFAULT_PRODUCTS, type ProductConfig } from "@/lib/imageStore";
+import {
+  getSiteConfig,
+  DEFAULT_PRODUCTS,
+  formatPrice,
+  type ProductConfig,
+} from "@/lib/imageStore";
 
 const containerVariants = {
   hidden: {},
@@ -14,6 +19,13 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
 };
 
+export interface ProductEventDetail {
+  name: string;
+  price?: number;
+  category?: string;
+  imageUrl?: string;
+}
+
 export default function Products() {
   const [products, setProducts] = useState<ProductConfig[]>(DEFAULT_PRODUCTS);
 
@@ -23,12 +35,16 @@ export default function Products() {
     });
   }, []);
 
-  const scrollToContact = (productName: string) => {
+  const scrollToContact = (product: ProductConfig) => {
     const el = document.querySelector("#contacto");
     if (el) el.scrollIntoView({ behavior: "smooth" });
-    window.dispatchEvent(
-      new CustomEvent("prefill-product", { detail: productName })
-    );
+    const detail: ProductEventDetail = {
+      name: product.name,
+      price: product.price,
+      category: product.category,
+      imageUrl: product.imageUrl,
+    };
+    window.dispatchEvent(new CustomEvent("prefill-product", { detail }));
   };
 
   return (
@@ -42,7 +58,7 @@ export default function Products() {
           className="text-center max-w-3xl mx-auto mb-16"
         >
           <h2 className="font-headline-lg text-[32px] font-bold text-on-surface mb-4">
-            Catálogo Premium
+            Catálogo de Productos
           </h2>
           <p className="text-[16px] text-on-surface-variant leading-relaxed">
             Selecciona el lienzo perfecto para tu próximo proyecto. Solo
@@ -66,8 +82,8 @@ export default function Products() {
             >
               {/* Product visual */}
               <div
-                className={`h-64 relative overflow-hidden flex items-center justify-center
-                  ${product.imageUrl ? "bg-[#f2f3ff]" : `bg-gradient-to-br ${product.gradient}`}`}
+                className={`h-56 relative overflow-hidden flex items-center justify-center
+                  ${product.imageUrl ? "bg-surface-container" : `bg-gradient-to-br ${product.gradient}`}`}
               >
                 {product.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -77,35 +93,72 @@ export default function Products() {
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 ) : (
-                  <span className="material-symbols-outlined text-[72px] text-primary-container/40 group-hover:text-primary-container/60 group-hover:scale-110 transition-all duration-500">
+                  <span className="material-symbols-outlined text-[72px] text-primary/20 group-hover:text-primary/40 group-hover:scale-110 transition-all duration-500">
                     {product.icon}
                   </span>
                 )}
-                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-primary-container text-[11px] font-semibold uppercase tracking-wide z-10">
+
+                {/* Badge superior */}
+                <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide text-primary z-10">
                   {product.badge}
+                </div>
+
+                {/* Precio — esquina superior derecha */}
+                <div className="absolute top-3 right-3 z-10">
+                  {product.price !== undefined ? (
+                    <div className="bg-primary text-on-primary px-3 py-1.5 rounded-full text-[12px] font-bold shadow-md">
+                      {formatPrice(product.price)}
+                    </div>
+                  ) : (
+                    <div className="bg-surface-container-high/90 backdrop-blur-sm text-outline px-3 py-1.5 rounded-full text-[10px] font-semibold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[11px]">help_outline</span>
+                      Cotizar
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Card body */}
-              <div className="p-6 flex-grow flex flex-col justify-between">
+              <div className="p-5 flex-grow flex flex-col justify-between">
                 <div>
-                  <h3 className="text-[20px] font-bold text-on-surface mb-2 font-headline-md">
+                  {/* Categoría */}
+                  {product.category && (
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-primary-container mb-1">
+                      {product.category}
+                    </p>
+                  )}
+                  <h3 className="text-[18px] font-bold text-on-surface mb-2 font-headline-md">
                     {product.name}
                   </h3>
-                  <p className="text-[15px] text-on-surface-variant mb-6 leading-relaxed line-clamp-2">
+                  <p className="text-[14px] text-on-surface-variant mb-4 leading-relaxed line-clamp-2">
                     {product.description}
                   </p>
                 </div>
 
-                <button
-                  onClick={() => scrollToContact(product.name)}
-                  className="w-full py-3 border border-outline-variant rounded-full text-[12px] font-semibold uppercase tracking-widest text-primary-container hover:bg-primary-container hover:text-on-primary-container transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-[16px]">
-                    edit
-                  </span>
-                  Personalizar
-                </button>
+                {/* Precio grande + botón */}
+                <div className="space-y-3">
+                  {product.price !== undefined ? (
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-[22px] font-bold text-on-surface">
+                        {formatPrice(product.price)}
+                      </span>
+                      <span className="text-[12px] text-outline">c/u</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-outline">
+                      <span className="material-symbols-outlined text-[16px]">info</span>
+                      <span className="text-[13px]">Precio a cotizar</span>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => scrollToContact(product)}
+                    className="w-full py-3 border-2 border-primary rounded-full text-[12px] font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-on-primary transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">edit</span>
+                    Personalizar
+                  </button>
+                </div>
               </div>
             </motion.div>
           ))}

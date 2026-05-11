@@ -8,9 +8,13 @@ import { toast } from "sonner";
 import {
   quoteFormSchema,
   type QuoteFormData,
-  PRODUCTS,
   COUNTRY_CODES,
 } from "@/lib/validations";
+import {
+  getSiteConfig,
+  formatPrice,
+  type ProductConfig,
+} from "@/lib/imageStore";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -464,6 +468,13 @@ export default function QuoteForm() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [charCount, setCharCount] = useState(0);
   const [referenceImage, setReferenceImage] = useState<string | undefined>();
+  const [products, setProducts] = useState<ProductConfig[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<ProductConfig | null>(null);
+
+  // Load products from Supabase
+  useEffect(() => {
+    getSiteConfig().then((cfg) => setProducts(cfg.products));
+  }, []);
 
   const {
     register,
@@ -495,16 +506,28 @@ export default function QuoteForm() {
   const designDescription = watch("designDescription");
   const deliveryType = watch("deliveryType");
   const phoneValue = watch("phone");
+  const selectedProductName = watch("product");
 
   useEffect(() => {
     setCharCount(designDescription?.length ?? 0);
   }, [designDescription]);
 
-  // Prefill from product cards
+  // Sync selectedProduct when product field changes
+  useEffect(() => {
+    const found = products.find((p) => p.name === selectedProductName) ?? null;
+    setSelectedProduct(found);
+  }, [selectedProductName, products]);
+
+  // Prefill from product cards (now receives full detail object)
   useEffect(() => {
     const handler = (e: Event) => {
-      const productName = (e as CustomEvent<string>).detail;
-      setValue("product", productName, { shouldValidate: false });
+      const detail = (e as CustomEvent).detail;
+      // Support both old string format and new object format
+      if (typeof detail === "string") {
+        setValue("product", detail, { shouldValidate: false });
+      } else if (detail && typeof detail === "object" && "name" in detail) {
+        setValue("product", detail.name, { shouldValidate: false });
+      }
     };
     window.addEventListener("prefill-product", handler);
     return () => window.removeEventListener("prefill-product", handler);
@@ -742,11 +765,72 @@ export default function QuoteForm() {
                           className={`${inputClass} cursor-pointer ${errors.product ? "border-error focus:ring-error" : ""}`}
                         >
                           <option value="">Selecciona un producto…</option>
-                          {PRODUCTS.map((p) => (
-                            <option key={p} value={p}>{p}</option>
-                          ))}
+                          {products.length > 0
+                            ? products.map((p) => (
+                                <option key={p.id} value={p.name}>{p.name}</option>
+                              ))
+                            : /* fallback estático si Supabase tarda */ [
+                                "Tazas Premium","Termos / Botellas","Playeras","Mousepads",
+                                "Fundas para celular","Cojines","Llaveros","Cuadros / Lienzos",
+                                "Otro (especificar en descripción)",
+                              ].map((name) => (
+                                <option key={name} value={name}>{name}</option>
+                              ))}
                         </select>
                       </FormField>
+
+                      {/* Vista previa del producto seleccionado */}
+                      {selectedProduct && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="rounded-2xl border border-primary-container/30 bg-primary-fixed overflow-hidden flex gap-0"
+                        >
+                          {/* Imagen o icono */}
+                          <div className={`w-20 flex-shrink-0 flex items-center justify-center
+                            ${selectedProduct.imageUrl ? "" : `bg-gradient-to-br ${selectedProduct.gradient}`}`}>
+                            {selectedProduct.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={selectedProduct.imageUrl}
+                                alt={selectedProduct.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="material-symbols-outlined text-[32px] text-primary/40">
+                                {selectedProduct.icon}
+                              </span>
+                            )}
+                          </div>
+                          {/* Info */}
+                          <div className="p-3 flex-1 min-w-0">
+                            {selectedProduct.category && (
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-primary-container mb-0.5">
+                                {selectedProduct.category}
+                              </p>
+                            )}
+                            <p className="text-[14px] font-bold text-on-surface truncate">
+                              {selectedProduct.name}
+                            </p>
+                            <p className="text-[12px] text-on-surface-variant line-clamp-1 mt-0.5">
+                              {selectedProduct.description}
+                            </p>
+                            <div className="mt-2 flex items-center gap-2">
+                              {selectedProduct.price !== undefined ? (
+                                <span className="inline-flex items-center gap-1 bg-primary text-on-primary px-2.5 py-1 rounded-full text-[12px] font-bold">
+                                  <span className="material-symbols-outlined text-[13px]">sell</span>
+                                  {formatPrice(selectedProduct.price)} c/u
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-outline text-[12px]">
+                                  <span className="material-symbols-outlined text-[13px]">help_outline</span>
+                                  Precio a cotizar
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
 
                       <FormField label="Cantidad de piezas" error={errors.quantity?.message} required>
                         <input
