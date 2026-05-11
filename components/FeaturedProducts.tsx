@@ -11,8 +11,10 @@ import {
 export interface ProductEventDetail {
   name: string;
   price?: number;
+  priceMode?: "fixed" | "quote" | "promo";
   category?: string;
   imageUrl?: string;
+  description?: string;
 }
 
 // ─── Tipo local ────────────────────────────────────────────────────────────────

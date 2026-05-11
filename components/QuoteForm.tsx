@@ -13,8 +13,8 @@ import {
 import {
   getSiteConfig,
   formatPrice,
-  type ProductConfig,
 } from "@/lib/imageStore";
+import type { ProductEventDetail } from "@/components/FeaturedProducts";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -464,12 +464,15 @@ export default function QuoteForm() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [charCount, setCharCount] = useState(0);
   const [referenceImage, setReferenceImage] = useState<string | undefined>();
-  const [products, setProducts] = useState<ProductConfig[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<ProductConfig | null>(null);
+  const [products, setProducts] = useState<string[]>([]);
+  const [prefilledDetail, setPrefilledDetail] = useState<ProductEventDetail | null>(null);
+  const isPrefillingRef = useRef(false);
 
-  // Load products from Supabase
+  // Load gallery categories from Supabase
   useEffect(() => {
-    getSiteConfig().then((cfg) => setProducts(cfg.products));
+    getSiteConfig().then((cfg) =>
+      setProducts(cfg.gallery.map((cat) => cat.title))
+    );
   }, []);
 
   const {
@@ -502,76 +505,32 @@ export default function QuoteForm() {
   const designDescription = watch("designDescription");
   const deliveryType = watch("deliveryType");
   const phoneValue = watch("phone");
-  const selectedProductName = watch("product");
 
   useEffect(() => {
     setCharCount(designDescription?.length ?? 0);
   }, [designDescription]);
 
-  // Sync selectedProduct when product field changes
-  useEffect(() => {
-    const found = products.find((p) => p.name === selectedProductName) ?? null;
-    setSelectedProduct(found);
-  }, [selectedProductName, products]);
-
-  // Prefill from product cards — matches gallery item to the closest product in the select
+  // Prefill from product cards — sets category + stores full gallery detail for preview
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
+      const detail = (e as CustomEvent<ProductEventDetail>).detail;
       if (!detail) return;
 
-      const incomingName: string =
-        typeof detail === "string" ? detail : (detail.name ?? "");
-      const incomingCategory: string =
-        typeof detail === "object" ? (detail.category ?? "") : "";
+      // Mark as programmatic change so select's onChange doesn't clear the preview
+      isPrefillingRef.current = true;
+      setPrefilledDetail(detail);
 
-      if (!incomingName && !incomingCategory) return;
+      // Set the select to the gallery category of this item
+      const category = detail.category ?? "";
+      setValue("product", category, { shouldValidate: false });
 
-      // 1. Exact match by product name
-      const exactByName = products.find((p) => p.name === incomingName);
-      if (exactByName) {
-        setValue("product", exactByName.name, { shouldValidate: false });
-        return;
-      }
-
-      // 2. Match gallery category → product name or product category
-      if (incomingCategory) {
-        const catQ = incomingCategory.toLowerCase();
-        const byCategory = products.find(
-          (p) =>
-            p.name.toLowerCase().includes(catQ) ||
-            catQ.includes(p.name.toLowerCase()) ||
-            (p.category &&
-              (p.category.toLowerCase().includes(catQ) ||
-                catQ.includes(p.category.toLowerCase())))
-        );
-        if (byCategory) {
-          setValue("product", byCategory.name, { shouldValidate: false });
-          return;
-        }
-      }
-
-      // 3. Partial match by image name vs product name
-      if (incomingName) {
-        const nameQ = incomingName.toLowerCase();
-        const byPartial = products.find(
-          (p) =>
-            p.name.toLowerCase().includes(nameQ) ||
-            nameQ.includes(p.name.toLowerCase())
-        );
-        if (byPartial) {
-          setValue("product", byPartial.name, { shouldValidate: false });
-          return;
-        }
-      }
-
-      // 4. Fallback: set value as-is (el select mostrará placeholder si no hay match)
-      setValue("product", incomingName, { shouldValidate: false });
+      // Reset flag after the onChange triggered by setValue has fired
+      setTimeout(() => { isPrefillingRef.current = false; }, 0);
     };
 
     window.addEventListener("prefill-product", handler);
     return () => window.removeEventListener("prefill-product", handler);
-  }, [setValue, products]);
+  }, [setValue]);
 
   // Sync reference image to form
   useEffect(() => {
@@ -598,6 +557,7 @@ export default function QuoteForm() {
         duration: 6000,
       });
       reset();
+      setPrefilledDetail(null);
       setReferenceImage(undefined);
     } catch (err: unknown) {
       const message =
@@ -800,66 +760,65 @@ export default function QuoteForm() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                       <FormField label="Producto a personalizar" error={errors.product?.message} required>
                         <select
-                          {...register("product")}
+                          {...register("product", {
+                            onChange: () => {
+                              // Solo limpia el preview si el cambio lo hizo el usuario, no el prefill
+                              if (!isPrefillingRef.current) setPrefilledDetail(null);
+                            },
+                          })}
                           disabled={isSubmitting}
                           className={`${inputClass} cursor-pointer ${errors.product ? "border-error focus:ring-error" : ""}`}
                         >
                           <option value="">Selecciona un producto…</option>
-                          {products.length > 0
-                            ? products.map((p) => (
-                              <option key={p.id} value={p.name}>{p.name}</option>
-                            ))
-                            : /* fallback estático si Supabase tarda */[
-                              "Tazas Premium", "Termos / Botellas", "Playeras", "Mousepads",
-                              "Fundas para celular", "Cojines", "Llaveros", "Cuadros / Lienzos",
-                              "Otro (especificar en descripción)",
-                            ].map((name) => (
-                              <option key={name} value={name}>{name}</option>
-                            ))}
+                          {products.map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                          <option value="Otro">Otro (especificar en descripción)</option>
                         </select>
                       </FormField>
 
-                      {/* Vista previa del producto seleccionado */}
-                      {selectedProduct && (
+                      {/* Vista previa — solo aparece cuando el cliente vino desde una tarjeta de galería */}
+                      {prefilledDetail && (
                         <motion.div
                           initial={{ opacity: 0, y: -8 }}
                           animate={{ opacity: 1, y: 0 }}
                           className="rounded-2xl border border-primary-container/30 bg-primary-fixed overflow-hidden flex gap-0"
                         >
-                          {/* Imagen o icono */}
-                          <div className={`w-20 flex-shrink-0 flex items-center justify-center
-                            ${selectedProduct.imageUrl ? "" : `bg-gradient-to-br ${selectedProduct.gradient}`}`}>
-                            {selectedProduct.imageUrl ? (
+                          {/* Imagen */}
+                          <div className="w-20 flex-shrink-0 flex items-center justify-center bg-surface-container overflow-hidden">
+                            {prefilledDetail.imageUrl ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
-                                src={selectedProduct.imageUrl}
-                                alt={selectedProduct.name}
+                                src={prefilledDetail.imageUrl}
+                                alt={prefilledDetail.name}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
                               <span className="material-symbols-outlined text-[32px] text-primary/40">
-                                {selectedProduct.icon}
+                                inventory_2
                               </span>
                             )}
                           </div>
                           {/* Info */}
                           <div className="p-3 flex-1 min-w-0">
-                            {selectedProduct.category && (
+                            {prefilledDetail.category && (
                               <p className="text-[10px] font-bold uppercase tracking-widest text-primary-container mb-0.5">
-                                {selectedProduct.category}
+                                {prefilledDetail.category}
                               </p>
                             )}
                             <p className="text-[14px] font-bold text-on-surface truncate">
-                              {selectedProduct.name}
+                              {prefilledDetail.name}
                             </p>
-                            <p className="text-[12px] text-on-surface-variant line-clamp-1 mt-0.5">
-                              {selectedProduct.description}
-                            </p>
+                            {prefilledDetail.description && (
+                              <p className="text-[12px] text-on-surface-variant line-clamp-1 mt-0.5">
+                                {prefilledDetail.description}
+                              </p>
+                            )}
                             <div className="mt-2 flex items-center gap-2">
-                              {selectedProduct.price !== undefined ? (
+                              {prefilledDetail.price !== undefined && prefilledDetail.priceMode !== "quote" ? (
                                 <span className="inline-flex items-center gap-1 bg-primary text-on-primary px-2.5 py-1 rounded-full text-[12px] font-bold">
                                   <span className="material-symbols-outlined text-[13px]">sell</span>
-                                  {formatPrice(selectedProduct.price)} c/u
+                                  {formatPrice(prefilledDetail.price)} c/u
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 text-outline text-[12px]">
