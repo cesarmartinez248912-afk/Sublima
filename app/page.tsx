@@ -1,6 +1,5 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
-import FeaturedProducts from "@/components/FeaturedProducts";
 import Gallery from "@/components/ProductGallery";
 import QuoteForm from "@/components/QuoteForm";
 import Footer from "@/components/Footer";
@@ -11,7 +10,6 @@ export default function Home() {
     <main className="min-h-screen bg-surface">
       <Navbar />
       <Hero />
-      <FeaturedProducts />
       <Gallery />
       <QuoteForm />
       <Footer />

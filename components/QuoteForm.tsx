@@ -514,20 +514,64 @@ export default function QuoteForm() {
     setSelectedProduct(found);
   }, [selectedProductName, products]);
 
-  // Prefill from product cards (now receives full detail object)
+  // Prefill from product cards — matches gallery item to the closest product in the select
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      // Support both old string format and new object format
-      if (typeof detail === "string") {
-        setValue("product", detail, { shouldValidate: false });
-      } else if (detail && typeof detail === "object" && "name" in detail) {
-        setValue("product", detail.name, { shouldValidate: false });
+      if (!detail) return;
+
+      const incomingName: string =
+        typeof detail === "string" ? detail : (detail.name ?? "");
+      const incomingCategory: string =
+        typeof detail === "object" ? (detail.category ?? "") : "";
+
+      if (!incomingName && !incomingCategory) return;
+
+      // 1. Exact match by product name
+      const exactByName = products.find((p) => p.name === incomingName);
+      if (exactByName) {
+        setValue("product", exactByName.name, { shouldValidate: false });
+        return;
       }
+
+      // 2. Match gallery category → product name or product category
+      if (incomingCategory) {
+        const catQ = incomingCategory.toLowerCase();
+        const byCategory = products.find(
+          (p) =>
+            p.name.toLowerCase().includes(catQ) ||
+            catQ.includes(p.name.toLowerCase()) ||
+            (p.category &&
+              (p.category.toLowerCase().includes(catQ) ||
+                catQ.includes(p.category.toLowerCase())))
+        );
+        if (byCategory) {
+          setValue("product", byCategory.name, { shouldValidate: false });
+          return;
+        }
+      }
+
+      // 3. Partial match by image name vs product name
+      if (incomingName) {
+        const nameQ = incomingName.toLowerCase();
+        const byPartial = products.find(
+          (p) =>
+            p.name.toLowerCase().includes(nameQ) ||
+            nameQ.includes(p.name.toLowerCase())
+        );
+        if (byPartial) {
+          setValue("product", byPartial.name, { shouldValidate: false });
+          return;
+        }
+      }
+
+      // 4. Fallback: set value as-is (el select mostrará placeholder si no hay match)
+      setValue("product", incomingName, { shouldValidate: false });
     };
+
     window.addEventListener("prefill-product", handler);
     return () => window.removeEventListener("prefill-product", handler);
-  }, [setValue]);
+  }, [setValue, products]);
 
   // Sync reference image to form
   useEffect(() => {
