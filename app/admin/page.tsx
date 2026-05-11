@@ -7,19 +7,17 @@ import {
   uploadImage,
   deleteImage,
   DEFAULT_GALLERY,
-  DEFAULT_PRODUCTS,
-  PRODUCT_CATEGORIES,
   formatPrice,
   isValidPrice,
   type SiteConfig,
   type GalleryCategory,
   type GalleryImage,
-  type ProductConfig,
 } from "@/lib/imageStore";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "admin";
 
-type Tab = "gallery" | "products" | "hero";
+type Tab = "gallery" | "hero";
+
 
 // ─── Icon / Gradient options ──────────────────────────────────────────────────
 
@@ -876,250 +874,6 @@ function GalleryTab({ config, onChange }: { config: SiteConfig; onChange: (c: Si
   );
 }
 
-// ─── Products Tab ─────────────────────────────────────────────────────────────
-
-function ProductsTab({ config, onChange }: { config: SiteConfig; onChange: (c: SiteConfig) => void }) {
-  const [uploading, setUploading] = useState<number | null>(null);
-  const [error, setError] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newProduct, setNewProduct] = useState<Omit<ProductConfig, "id" | "imageUrl">>({
-    name: "",
-    badge: "",
-    description: "",
-    icon: "stars",
-    gradient: "from-amber-50 to-yellow-50",
-    price: undefined,
-    category: "",
-  });
-
-  const products = config.products;
-  const update = (updated: ProductConfig[]) => onChange({ ...config, products: updated });
-
-  const handleUpload = async (id: number, file: File) => {
-    setUploading(id);
-    setError("");
-    try {
-      const url = await uploadImage(file, `products/prod-${id}.jpg`);
-      update(products.map((p) => p.id === id ? { ...p, imageUrl: url } : p));
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Error al subir imagen");
-    } finally {
-      setUploading(null);
-    }
-  };
-
-  const handleRemove = async (id: number) => {
-    await deleteImage(`products/prod-${id}.jpg`);
-    update(products.map((p) => p.id === id ? { ...p, imageUrl: undefined } : p));
-  };
-
-  const updateMeta = (id: number, patch: Partial<ProductConfig>) =>
-    update(products.map((p) => p.id === id ? { ...p, ...patch } : p));
-
-  const deleteProduct = (id: number) => { update(products.filter((p) => p.id !== id)); setDeleteConfirm(null); };
-
-  const addProduct = () => {
-    if (!newProduct.name.trim()) return;
-    const id = nextId(products);
-    update([...products, { id, ...newProduct }]);
-    setNewProduct({ name: "", badge: "", description: "", icon: "stars", gradient: "from-amber-50 to-yellow-50", price: undefined, category: "" });
-    setShowAddForm(false);
-  };
-
-  const toggleFeaturedProduct = (id: number) => {
-    const product = products.find((p) => p.id === id);
-    if (!product) return;
-    updateMeta(id, { featured: !product.featured });
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="bg-[#FFF5D6] rounded-2xl p-4 text-[13px] text-[#1E1E1E] flex gap-3 flex-1">
-          <span className="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5">info</span>
-          <p>Estos productos aparecen en <strong>Productos Destacados</strong> del Home cuando activas la estrella ⭐.</p>
-        </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-2 bg-[#1E1E1E] text-white text-[13px] font-semibold px-5 py-3 rounded-xl hover:bg-[#111111] transition-colors flex-shrink-0"
-        >
-          <span className="material-symbols-outlined text-[16px]">{showAddForm ? "close" : "add"}</span>
-          {showAddForm ? "Cancelar" : "Nuevo producto"}
-        </button>
-      </div>
-
-      {/* Add form */}
-      {showAddForm && (
-        <div className="bg-[#faf8ff] border border-[#F0E8C8] rounded-2xl p-5 space-y-4">
-          <p className="text-[13px] font-semibold text-[#131b2e]">Nuevo producto destacado</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] text-[#737784] mb-1">Nombre *</label>
-              <input value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} placeholder="Ej: Gorras bordadas" className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white" />
-            </div>
-            <div>
-              <label className="block text-[11px] text-[#737784] mb-1">Badge</label>
-              <input value={newProduct.badge} onChange={(e) => setNewProduct({ ...newProduct, badge: e.target.value })} placeholder="Ej: Algodón Premium" className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] text-[#737784] mb-1">Precio (MXN)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-[#737784] font-semibold">$</span>
-                <input type="number" min="0" step="0.01" value={newProduct.price ?? ""} onChange={(e) => { const val = e.target.value === "" ? undefined : Math.max(0, parseFloat(e.target.value)); setNewProduct({ ...newProduct, price: isNaN(val as number) ? undefined : val }); }} placeholder="0.00" className="w-full text-[13px] pl-7 pr-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white" />
-              </div>
-              <p className="text-[10px] text-[#737784] mt-1">Vacío = precio a cotizar</p>
-            </div>
-            <div>
-              <label className="block text-[11px] text-[#737784] mb-1">Categoría</label>
-              <select value={newProduct.category ?? ""} onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white">
-                <option value="">Sin categoría</option>
-                {PRODUCT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="block text-[11px] text-[#737784] mb-1">Descripción</label>
-            <textarea value={newProduct.description} onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })} rows={2} className="w-full text-[13px] px-3 py-2 rounded-xl border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white resize-none" />
-          </div>
-          <div className="flex justify-end gap-3">
-            <button onClick={() => setShowAddForm(false)} className="text-[13px] text-[#434653] px-4 py-2 rounded-xl border border-[#c3c6d5]">Cancelar</button>
-            <button onClick={addProduct} disabled={!newProduct.name.trim()} className="text-[13px] font-semibold bg-[#1E1E1E] text-white px-5 py-2 rounded-xl hover:bg-[#111111] transition-colors disabled:opacity-40 flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[16px]">add</span>Agregar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-[12px] text-red-600 flex gap-2">
-          <span className="material-symbols-outlined text-[16px]">error</span>{error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {products.map((product) => {
-          const isDeleting = deleteConfirm === product.id;
-          return (
-            <div key={product.id} className="bg-white rounded-2xl border border-[#F0E8C8] p-5 space-y-4" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
-              {/* Header */}
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <input value={product.name} onChange={(e) => updateMeta(product.id, { name: e.target.value })} className="font-semibold text-[#131b2e] text-[15px] w-full focus:outline-none focus:ring-2 focus:ring-[#F0A500] rounded-lg px-2 py-1 -mx-2 bg-transparent hover:bg-[#faf8ff] transition-colors" />
-                </div>
-                <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                  {/* Featured star toggle */}
-                  <button
-                    onClick={() => toggleFeaturedProduct(product.id)}
-                    title={product.featured ? "Quitar de destacados" : "Marcar como destacado"}
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${product.featured ? "bg-[#F0A500] text-white shadow-md" : "bg-[#f5f5f5] text-[#737784] hover:bg-[#FFF5D6] hover:text-[#F0A500]"}`}
-                  >
-                    <span className="material-symbols-outlined text-[17px]">{product.featured ? "star" : "star_outline"}</span>
-                  </button>
-                  {isDeleting ? (
-                    <div className="flex gap-2">
-                      <button onClick={() => deleteProduct(product.id)} className="text-[11px] bg-red-500 text-white px-2.5 py-1 rounded-lg font-semibold">¿Eliminar?</button>
-                      <button onClick={() => setDeleteConfirm(null)} className="text-[11px] text-[#434653] px-2.5 py-1 rounded-lg border border-[#c3c6d5]">No</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => { setDeleteConfirm(product.id); setTimeout(() => setDeleteConfirm(null), 3000); }} className="text-[#737784] hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50">
-                      <span className="material-symbols-outlined text-[18px]">delete</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {product.featured && (
-                <div className="flex items-center gap-1.5 bg-[#FFF9F0] border border-[#F0E8C8] rounded-xl px-3 py-2">
-                  <span className="material-symbols-outlined text-[14px] text-[#F0A500]">star</span>
-                  <span className="text-[11px] font-semibold text-[#F0A500]">Aparece en Productos Destacados del Home</span>
-                </div>
-              )}
-
-              {/* Fields */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] text-[#737784] mb-1">Badge</label>
-                  <input value={product.badge} onChange={(e) => updateMeta(product.id, { badge: e.target.value })} className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-[#faf8ff]" />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-[#737784] mb-1">Ícono</label>
-                  <select value={product.icon} onChange={(e) => updateMeta(product.id, { icon: e.target.value })} className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-[#faf8ff]">
-                    {ICON_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] text-[#737784] mb-1">Descripción</label>
-                <textarea value={product.description} onChange={(e) => updateMeta(product.id, { description: e.target.value })} rows={2} className="w-full text-[12px] px-2.5 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-[#faf8ff] resize-none" />
-              </div>
-
-              {/* Price & Category */}
-              <div className="bg-[#FFF9F0] border border-[#F0E8C8] rounded-xl p-3 space-y-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#F0A500]">💲 Precio & Categoría</p>
-                <div>
-                  <label className="block text-[10px] text-[#737784] mb-1.5">Tipo de precio</label>
-                  <div className="flex gap-2">
-                    {(["fixed", "quote", "promo"] as const).map((mode) => {
-                      const labels = { fixed: "Precio fijo", quote: "A cotizar", promo: "En promoción" };
-                      const icons = { fixed: "sell", quote: "chat_bubble", promo: "local_offer" };
-                      const current = (product as ProductConfig & { priceMode?: string }).priceMode ?? "fixed";
-                      const active = current === mode;
-                      return (
-                        <button key={mode} onClick={() => updateMeta(product.id, { priceMode: mode } as Partial<ProductConfig>)} className={`flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-xl text-[10px] font-semibold border transition-all ${active ? "bg-[#1E1E1E] text-white border-[#1E1E1E]" : "bg-white text-[#737784] border-[#c3c6d5] hover:border-[#F0A500]"}`}>
-                          <span className="material-symbols-outlined text-[14px]">{icons[mode]}</span>
-                          {labels[mode]}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] text-[#737784] mb-1">Precio (MXN)</label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[12px] text-[#737784] font-semibold">$</span>
-                      <input type="number" min="0" step="1" disabled={(product as ProductConfig & { priceMode?: string }).priceMode === "quote"} value={product.price ?? ""} onChange={(e) => { const val = e.target.value === "" ? undefined : parseFloat(e.target.value); if (val === undefined || (isValidPrice(val) && val >= 0)) updateMeta(product.id, { price: val }); }} placeholder={(product as ProductConfig & { priceMode?: string }).priceMode === "quote" ? "— a cotizar —" : "0"} className="w-full text-[12px] pl-6 pr-2 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white disabled:bg-[#f5f5f5] disabled:text-[#bbb]" />
-                    </div>
-                    {product.price !== undefined && isValidPrice(product.price) && (
-                      <p className="text-[10px] text-[#1E1E1E] font-bold mt-1">{formatPrice(product.price)}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-[#737784] mb-1">Categoría</label>
-                    <select value={product.category ?? ""} onChange={(e) => updateMeta(product.id, { category: e.target.value })} className="w-full text-[12px] px-2 py-1.5 rounded-lg border border-[#c3c6d5] focus:outline-none focus:ring-2 focus:ring-[#F0A500] bg-white">
-                      <option value="">Sin categoría</option>
-                      {PRODUCT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <ImageDropZone
-                imageUrl={product.imageUrl}
-                label="Foto del producto"
-                aspectClass="aspect-square"
-                uploading={uploading === product.id}
-                onUpload={(file) => handleUpload(product.id, file)}
-                onRemove={() => handleRemove(product.id)}
-              />
-            </div>
-          );
-        })}
-      </div>
-
-      {products.length === 0 && (
-        <div className="text-center py-16 text-[#737784] text-[14px]">
-          No hay productos. Haz clic en <strong>Nuevo producto</strong> para comenzar.
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Hero Tab ─────────────────────────────────────────────────────────────────
 
 function HeroTab({ config, onChange }: { config: SiteConfig; onChange: (c: SiteConfig) => void }) {
@@ -1176,7 +930,7 @@ export default function AdminPage() {
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("gallery");
-  const [config, setConfig] = useState<SiteConfig>({ gallery: DEFAULT_GALLERY, products: DEFAULT_PRODUCTS, hero: {} });
+  const [config, setConfig] = useState<SiteConfig>({ gallery: DEFAULT_GALLERY, products: [], hero: {} });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1206,14 +960,13 @@ export default function AdminPage() {
   const handleReset = async () => {
     if (!resetConfirm) { setResetConfirm(true); setTimeout(() => setResetConfirm(false), 3000); return; }
     setResetConfirm(false);
-    const def = { gallery: DEFAULT_GALLERY, products: DEFAULT_PRODUCTS, hero: {} };
+    const def = { gallery: DEFAULT_GALLERY, products: [], hero: {} };
     setConfig(def);
     await setSiteConfig(def);
   };
 
   const TABS: { id: Tab; label: string; icon: string }[] = [
     { id: "gallery", label: "Productos / Galería", icon: "photo_library" },
-    { id: "products", label: "Destacados", icon: "star" },
     { id: "hero", label: "Hero / Portada", icon: "image" },
   ];
 
@@ -1314,7 +1067,6 @@ export default function AdminPage() {
         ) : (
           <>
             {activeTab === "gallery" && <GalleryTab config={config} onChange={setConfig} />}
-            {activeTab === "products" && <ProductsTab config={config} onChange={setConfig} />}
             {activeTab === "hero" && <HeroTab config={config} onChange={setConfig} />}
           </>
         )}

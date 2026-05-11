@@ -4,11 +4,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useMemo } from "react";
 import {
   getSiteConfig,
-  DEFAULT_PRODUCTS,
   formatPrice,
-  type ProductConfig,
+  type GalleryImage,
 } from "@/lib/imageStore";
 import type { ProductEventDetail } from "./FeaturedProducts";
+
+// ─── Tipo local ────────────────────────────────────────────────────────────────
+
+type GalleryItem = GalleryImage & {
+  categoryTitle: string;
+  catGradient: string;
+  catIcon: string;
+};
 
 // ─── Skeleton Card ─────────────────────────────────────────────────────────────
 
@@ -25,21 +32,23 @@ function SkeletonCard() {
   );
 }
 
-// ─── Gallery Product Card ──────────────────────────────────────────────────────
+// ─── Gallery Card ──────────────────────────────────────────────────────────────
 
 function GalleryCard({
-  product,
+  item,
   index,
   onCotizar,
 }: {
-  product: ProductConfig;
+  item: GalleryItem;
   index: number;
-  onCotizar: (product: ProductConfig) => void;
+  onCotizar: (item: GalleryItem) => void;
 }) {
   const [imgLoaded, setImgLoaded] = useState(false);
+  const displayName = item.name || item.caption || item.categoryTitle;
+  const priceMode = item.priceMode ?? (item.price !== undefined ? "fixed" : "quote");
 
   const priceDisplay = () => {
-    if (product.priceMode === "quote" || product.price === undefined) {
+    if (priceMode === "quote" || item.price === undefined) {
       return (
         <span className="text-[12px] font-semibold text-on-surface-variant flex items-center gap-1">
           <span className="material-symbols-outlined text-[13px]">chat_bubble</span>
@@ -47,17 +56,17 @@ function GalleryCard({
         </span>
       );
     }
-    if (product.priceMode === "promo") {
+    if (priceMode === "promo") {
       return (
         <div className="flex items-baseline gap-1.5">
-          <span className="text-[16px] font-bold text-red-500">{formatPrice(product.price)}</span>
+          <span className="text-[16px] font-bold text-red-500">{formatPrice(item.price)}</span>
           <span className="text-[9px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded-full">PROMO</span>
         </div>
       );
     }
     return (
       <div className="flex items-baseline gap-1">
-        <span className="text-[16px] font-bold text-on-surface">{formatPrice(product.price)}</span>
+        <span className="text-[16px] font-bold text-on-surface">{formatPrice(item.price)}</span>
         <span className="text-[11px] text-outline">c/u</span>
       </div>
     );
@@ -71,30 +80,33 @@ function GalleryCard({
       transition={{ delay: index * 0.05, duration: 0.35, ease: "easeOut" }}
       className="group bg-surface-container-lowest rounded-[20px] overflow-hidden flex flex-col"
       style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.04)" }}
-      whileHover={{ y: -3, boxShadow: "0 12px 32px rgba(240,165,0,0.12)", transition: { duration: 0.2 } }}
+      whileHover={{
+        y: -3,
+        boxShadow: "0 12px 32px rgba(240,165,0,0.12)",
+        transition: { duration: 0.2 },
+      }}
     >
       {/* Image */}
       <div
         className={`relative h-48 overflow-hidden flex items-center justify-center flex-shrink-0
-          ${product.imageUrl ? "bg-surface-container" : `bg-gradient-to-br ${product.gradient}`}`}
+          ${item.imageUrl ? "bg-surface-container" : `bg-gradient-to-br ${item.catGradient}`}`}
       >
-        {product.imageUrl ? (
+        {item.imageUrl ? (
           <>
             {!imgLoaded && <div className="absolute inset-0 bg-surface-container animate-pulse" />}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={product.imageUrl}
-              alt={product.name}
+              src={item.imageUrl}
+              alt={displayName}
               onLoad={() => setImgLoaded(true)}
               loading="lazy"
-              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
-                imgLoaded ? "opacity-100" : "opacity-0"
-              }`}
+              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"
+                }`}
             />
           </>
         ) : (
           <span className="material-symbols-outlined text-[60px] text-primary/15 group-hover:text-primary/25 group-hover:scale-105 transition-all duration-500">
-            {product.icon}
+            {item.catIcon}
           </span>
         )}
 
@@ -102,9 +114,9 @@ function GalleryCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
         {/* Featured badge */}
-        {product.featured && (
+        {item.featured && (
           <div className="absolute top-2.5 left-2.5 z-10">
-            <div className="badge-gradient text-[8px] tracking-widest py-1 px-2.5">
+            <div className="badge-gradient text-[8px] tracking-widest py-1 px-2.5 rounded-full flex items-center gap-1">
               <span className="material-symbols-outlined text-[10px]">star</span>
               Destacado
             </div>
@@ -112,26 +124,29 @@ function GalleryCard({
         )}
 
         {/* Category badge */}
-        {product.category && (
-          <div className="absolute bottom-2.5 left-2.5 z-10">
-            <div className="bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[9px] font-semibold text-primary-container uppercase tracking-wide">
-              {product.category}
-            </div>
+        <div className="absolute bottom-2.5 left-2.5 z-10">
+          <div className="bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[9px] font-semibold text-primary-container uppercase tracking-wide">
+            {item.categoryTitle}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Content */}
       <div className="p-4 flex-grow flex flex-col justify-between gap-3">
         <div>
           <h3 className="text-[15px] font-bold text-on-surface font-headline-md leading-tight mb-1">
-            {product.name}
+            {displayName}
           </h3>
           {priceDisplay()}
+          {item.description && (
+            <p className="text-[12px] text-on-surface-variant mt-1.5 line-clamp-2 leading-relaxed">
+              {item.description}
+            </p>
+          )}
         </div>
 
         <button
-          onClick={() => onCotizar(product)}
+          onClick={() => onCotizar(item)}
           className="w-full py-2.5 border-2 border-primary-container/30 rounded-full text-[10px] font-bold uppercase tracking-widest text-primary-container hover:bg-primary-container hover:text-on-primary-container transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1.5"
         >
           <span className="material-symbols-outlined text-[13px]">edit_note</span>
@@ -145,50 +160,63 @@ function GalleryCard({
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 export default function ProductGallery() {
-  const [allProducts, setAllProducts] = useState<ProductConfig[]>([]);
+  const [allItems, setAllItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("Todos");
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     getSiteConfig().then((cfg) => {
-      setAllProducts(cfg.products.length > 0 ? cfg.products : DEFAULT_PRODUCTS);
+      // Aplana TODAS las imágenes de TODAS las categorías
+      const items: GalleryItem[] = cfg.gallery.flatMap((cat) =>
+        cat.images
+          .filter((img) => img.imageUrl) // solo las que tienen imagen subida
+          .map((img) => ({
+            ...img,
+            categoryTitle: cat.title,
+            catGradient: cat.gradient,
+            catIcon: cat.icon,
+          }))
+      );
+      setAllItems(items);
       setLoading(false);
     });
   }, []);
 
-  // Build category tabs dynamically from products
+  // Tabs dinámicos por categoría
   const categories = useMemo(() => {
-    const cats = new Set(allProducts.map((p) => p.category).filter(Boolean) as string[]);
+    const cats = new Set(allItems.map((i) => i.categoryTitle));
     return ["Todos", ...Array.from(cats).sort()];
-  }, [allProducts]);
+  }, [allItems]);
 
-  // Filter products
+  // Filtrado
   const filtered = useMemo(() => {
-    let result = allProducts;
+    let result = allItems;
     if (activeTab !== "Todos") {
-      result = result.filter((p) => p.category === activeTab);
+      result = result.filter((i) => i.categoryTitle === activeTab);
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.category?.toLowerCase().includes(q)) ||
-          (p.description?.toLowerCase().includes(q))
+        (i) =>
+          (i.name?.toLowerCase().includes(q)) ||
+          (i.caption?.toLowerCase().includes(q)) ||
+          (i.description?.toLowerCase().includes(q)) ||
+          i.categoryTitle.toLowerCase().includes(q)
       );
     }
     return result;
-  }, [allProducts, activeTab, searchQuery]);
+  }, [allItems, activeTab, searchQuery]);
 
-  const scrollToContact = (product: ProductConfig) => {
+  const scrollToContact = (item: GalleryItem) => {
     const el = document.querySelector("#contacto");
     if (el) el.scrollIntoView({ behavior: "smooth" });
+    const displayName = item.name || item.caption || item.categoryTitle;
     const detail: ProductEventDetail = {
-      name: product.name,
-      price: product.price,
-      category: product.category,
-      imageUrl: product.imageUrl,
+      name: displayName,
+      price: item.price,
+      category: item.categoryTitle,
+      imageUrl: item.imageUrl,
     };
     window.dispatchEvent(new CustomEvent("prefill-product", { detail }));
   };
@@ -233,7 +261,7 @@ export default function ProductGallery() {
         </motion.div>
 
         {/* Category Tabs */}
-        {!loading && (
+        {!loading && allItems.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -242,22 +270,25 @@ export default function ProductGallery() {
             className="flex gap-2 flex-wrap mb-8"
           >
             {categories.map((cat) => {
-              const count = cat === "Todos" ? allProducts.length : allProducts.filter((p) => p.category === cat).length;
+              const count =
+                cat === "Todos"
+                  ? allItems.length
+                  : allItems.filter((i) => i.categoryTitle === cat).length;
               return (
                 <button
                   key={cat}
                   onClick={() => setActiveTab(cat)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-semibold transition-all duration-200 border ${
-                    activeTab === cat
-                      ? "bg-primary-container text-on-primary-container border-primary-container shadow-sm"
-                      : "bg-surface text-on-surface-variant border-outline-variant hover:border-primary-container/50 hover:text-on-surface"
-                  }`}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-semibold transition-all duration-200 border ${activeTab === cat
+                    ? "bg-primary-container text-on-primary-container border-primary-container shadow-sm"
+                    : "bg-surface text-on-surface-variant border-outline-variant hover:border-primary-container/50 hover:text-on-surface"
+                    }`}
                 >
                   {cat}
                   <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                      activeTab === cat ? "bg-white/20 text-on-primary-container" : "bg-surface-container text-outline"
-                    }`}
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === cat
+                      ? "bg-white/20 text-on-primary-container"
+                      : "bg-surface-container text-outline"
+                      }`}
                   >
                     {count}
                   </span>
@@ -267,10 +298,12 @@ export default function ProductGallery() {
           </motion.div>
         )}
 
-        {/* Products Grid */}
+        {/* Grid */}
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => <SkeletonCard key={i} />)}
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
         ) : filtered.length === 0 ? (
           <motion.div
@@ -285,12 +318,12 @@ export default function ProductGallery() {
             </div>
             <div className="text-center">
               <p className="text-on-surface font-semibold text-[16px] mb-1">
-                {searchQuery ? "Sin resultados" : "Sin productos en esta categoría"}
+                {searchQuery ? "Sin resultados" : "Sin productos aún"}
               </p>
               <p className="text-on-surface-variant text-[14px]">
                 {searchQuery
                   ? `No encontramos productos para "${searchQuery}"`
-                  : "Aún no hay productos en esta categoría."}
+                  : "Agrega imágenes desde el panel admin para verlas aquí."}
               </p>
             </div>
             {searchQuery && (
@@ -308,10 +341,10 @@ export default function ProductGallery() {
               key={activeTab + searchQuery}
               className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
             >
-              {filtered.map((product, idx) => (
+              {filtered.map((item, idx) => (
                 <GalleryCard
-                  key={product.id}
-                  product={product}
+                  key={`${item.categoryTitle}-${item.id}`}
+                  item={item}
                   index={idx}
                   onCotizar={scrollToContact}
                 />
@@ -333,7 +366,9 @@ export default function ProductGallery() {
               ¿No encuentras lo que buscas?
             </p>
             <button
-              onClick={() => document.querySelector("#contacto")?.scrollIntoView({ behavior: "smooth" })}
+              onClick={() =>
+                document.querySelector("#contacto")?.scrollIntoView({ behavior: "smooth" })
+              }
               className="inline-flex items-center gap-2 bg-primary-container text-on-primary-container px-8 py-4 rounded-full text-[11px] font-semibold uppercase tracking-widest hover:opacity-90 transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98]"
             >
               <span className="material-symbols-outlined text-[18px]">chat</span>

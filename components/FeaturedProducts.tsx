@@ -4,9 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import {
   getSiteConfig,
-  DEFAULT_PRODUCTS,
   formatPrice,
-  type ProductConfig,
+  type GalleryImage,
 } from "@/lib/imageStore";
 
 export interface ProductEventDetail {
@@ -15,6 +14,14 @@ export interface ProductEventDetail {
   category?: string;
   imageUrl?: string;
 }
+
+// ─── Tipo local ────────────────────────────────────────────────────────────────
+
+type FeaturedItem = GalleryImage & {
+  categoryTitle: string;
+  catGradient: string;
+  catIcon: string;
+};
 
 // ─── Skeleton Card ─────────────────────────────────────────────────────────────
 
@@ -26,25 +33,26 @@ function SkeletonCard() {
         <div className="h-3 bg-surface-container rounded-full w-1/3" />
         <div className="h-5 bg-surface-container rounded-full w-2/3" />
         <div className="h-3 bg-surface-container rounded-full w-full" />
-        <div className="h-3 bg-surface-container rounded-full w-4/5" />
         <div className="h-10 bg-surface-container rounded-full mt-4" />
       </div>
     </div>
   );
 }
 
-// ─── Product Card ──────────────────────────────────────────────────────────────
+// ─── Featured Card ─────────────────────────────────────────────────────────────
 
 function FeaturedCard({
-  product,
+  item,
   index,
   onCotizar,
 }: {
-  product: ProductConfig;
+  item: FeaturedItem;
   index: number;
-  onCotizar: (product: ProductConfig) => void;
+  onCotizar: (item: FeaturedItem) => void;
 }) {
   const [imgLoaded, setImgLoaded] = useState(false);
+  const displayName = item.name || item.caption || item.categoryTitle;
+  const priceMode = item.priceMode ?? (item.price !== undefined ? "fixed" : "quote");
 
   return (
     <motion.div
@@ -59,29 +67,30 @@ function FeaturedCard({
       {/* Image area */}
       <div
         className={`relative h-64 overflow-hidden flex items-center justify-center flex-shrink-0
-          ${product.imageUrl ? "bg-surface-container" : `bg-gradient-to-br ${product.gradient}`}`}
+          ${item.imageUrl ? "bg-surface-container" : `bg-gradient-to-br ${item.catGradient}`}`}
       >
-        {product.imageUrl ? (
+        {item.imageUrl ? (
           <>
             {!imgLoaded && (
               <div className="absolute inset-0 bg-surface-container animate-pulse" />
             )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={product.imageUrl}
-              alt={product.name}
+              src={item.imageUrl}
+              alt={displayName}
               onLoad={() => setImgLoaded(true)}
+              loading="lazy"
               className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"
                 }`}
             />
           </>
         ) : (
           <span className="material-symbols-outlined text-[80px] text-primary/15 group-hover:text-primary/25 group-hover:scale-105 transition-all duration-500">
-            {product.icon}
+            {item.catIcon}
           </span>
         )}
 
-        {/* Golden overlay on hover */}
+        {/* Overlay on hover */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
         {/* Destacado badge */}
@@ -94,19 +103,19 @@ function FeaturedCard({
 
         {/* Precio badge */}
         <div className="absolute top-3 right-3 z-10">
-          {product.priceMode === "quote" || product.price === undefined ? (
+          {priceMode === "quote" || item.price === undefined ? (
             <div className="bg-white/90 backdrop-blur-sm text-on-surface-variant px-3 py-1.5 rounded-full text-[10px] font-semibold flex items-center gap-1">
               <span className="material-symbols-outlined text-[11px]">chat_bubble</span>
               Cotizar
             </div>
-          ) : product.priceMode === "promo" ? (
+          ) : priceMode === "promo" ? (
             <div className="bg-red-500 text-white px-3 py-1.5 rounded-full text-[12px] font-bold shadow-md flex items-center gap-1">
               <span className="material-symbols-outlined text-[13px]">local_offer</span>
-              {formatPrice(product.price)}
+              {formatPrice(item.price)}
             </div>
           ) : (
             <div className="bg-primary text-on-primary px-3 py-1.5 rounded-full text-[12px] font-bold shadow-md">
-              {formatPrice(product.price)}
+              {formatPrice(item.price)}
             </div>
           )}
         </div>
@@ -115,40 +124,40 @@ function FeaturedCard({
       {/* Content */}
       <div className="p-5 flex-grow flex flex-col justify-between gap-4">
         <div>
-          {product.category && (
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-primary-container mb-1">
-              {product.category}
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-primary-container mb-1">
+            {item.categoryTitle}
+          </p>
+          <h3 className="text-[17px] font-bold text-on-surface font-headline-md mb-1.5 leading-tight">
+            {displayName}
+          </h3>
+          {item.description && (
+            <p className="text-[13px] text-on-surface-variant leading-relaxed line-clamp-2">
+              {item.description}
             </p>
           )}
-          <h3 className="text-[17px] font-bold text-on-surface font-headline-md mb-1.5 leading-tight">
-            {product.name}
-          </h3>
-          <p className="text-[13px] text-on-surface-variant leading-relaxed line-clamp-2">
-            {product.description}
-          </p>
         </div>
 
         <div className="space-y-3">
           {/* Price display */}
-          {product.priceMode === "quote" || product.price === undefined ? (
+          {priceMode === "quote" || item.price === undefined ? (
             <div className="flex items-center gap-2 bg-surface-container py-2 px-3 rounded-xl">
               <span className="material-symbols-outlined text-[15px] text-primary-container">chat_bubble</span>
               <span className="text-[12px] font-semibold text-on-surface-variant">Precio a cotizar</span>
             </div>
-          ) : product.priceMode === "promo" ? (
+          ) : priceMode === "promo" ? (
             <div className="flex items-baseline gap-2">
-              <span className="text-[22px] font-bold text-red-500">{formatPrice(product.price)}</span>
+              <span className="text-[22px] font-bold text-red-500">{formatPrice(item.price)}</span>
               <span className="text-[10px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full">PROMO</span>
             </div>
           ) : (
             <div className="flex items-baseline gap-1">
-              <span className="text-[22px] font-bold text-on-surface">{formatPrice(product.price)}</span>
+              <span className="text-[22px] font-bold text-on-surface">{formatPrice(item.price)}</span>
               <span className="text-[12px] text-outline">c/u</span>
             </div>
           )}
 
           <button
-            onClick={() => onCotizar(product)}
+            onClick={() => onCotizar(item)}
             className="w-full py-3 bg-primary-container text-on-primary-container rounded-full text-[11px] font-bold uppercase tracking-widest hover:opacity-90 hover:shadow-md transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
           >
             <span className="material-symbols-outlined text-[15px]">edit_note</span>
@@ -160,56 +169,44 @@ function FeaturedCard({
   );
 }
 
-// ─── Empty State ───────────────────────────────────────────────────────────────
-
-function EmptyFeatured({ onCotizar }: { onCotizar: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 gap-5">
-      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-50 to-yellow-100 flex items-center justify-center">
-        <span className="material-symbols-outlined text-[40px] text-primary-container/40">star</span>
-      </div>
-      <div className="text-center">
-        <p className="text-on-surface font-semibold text-[16px] mb-1">Sin productos destacados aún</p>
-        <p className="text-on-surface-variant text-[14px]">Activa la estrella ⭐ en el panel admin para mostrar productos aquí.</p>
-      </div>
-      <button
-        onClick={onCotizar}
-        className="inline-flex items-center gap-2 text-primary-container text-[13px] font-semibold hover:underline"
-      >
-        Ver todos los productos
-        <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-      </button>
-    </div>
-  );
-}
-
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 export default function FeaturedProducts() {
-  const [allProducts, setAllProducts] = useState<ProductConfig[]>([]);
+  const [featured, setFeatured] = useState<FeaturedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getSiteConfig().then((cfg) => {
-      const products = cfg.products.length > 0 ? cfg.products : DEFAULT_PRODUCTS;
-      setAllProducts(products);
+      // Recopila todas las imágenes marcadas como destacadas en TODAS las categorías
+      const items: FeaturedItem[] = cfg.gallery.flatMap((cat) =>
+        cat.images
+          .filter((img) => img.featured && img.imageUrl)
+          .map((img) => ({
+            ...img,
+            categoryTitle: cat.title,
+            catGradient: cat.gradient,
+            catIcon: cat.icon,
+          }))
+      ).sort((a, b) => (a.featuredOrder ?? 0) - (b.featuredOrder ?? 0));
+
+      setFeatured(items);
       setLoading(false);
     });
   }, []);
 
-  const featured = allProducts
-    .filter((p) => p.featured)
-    .sort((a, b) => (a.featuredOrder ?? 0) - (b.featuredOrder ?? 0));
+  // Si no hay destacados y terminó de cargar, ocultar la sección
+  if (!loading && featured.length === 0) return null;
 
-  const scrollToContact = (product?: ProductConfig) => {
+  const scrollToContact = (item?: FeaturedItem) => {
     const el = document.querySelector("#contacto");
     if (el) el.scrollIntoView({ behavior: "smooth" });
-    if (product) {
+    if (item) {
+      const displayName = item.name || item.caption || item.categoryTitle;
       const detail: ProductEventDetail = {
-        name: product.name,
-        price: product.price,
-        category: product.category,
-        imageUrl: product.imageUrl,
+        name: displayName,
+        price: item.price,
+        category: item.categoryTitle,
+        imageUrl: item.imageUrl,
       };
       window.dispatchEvent(new CustomEvent("prefill-product", { detail }));
     }
@@ -243,7 +240,9 @@ export default function FeaturedProducts() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
-            onClick={() => document.querySelector("#galeria")?.scrollIntoView({ behavior: "smooth" })}
+            onClick={() =>
+              document.querySelector("#galeria-productos")?.scrollIntoView({ behavior: "smooth" })
+            }
             className="mt-6 md:mt-0 inline-flex items-center gap-1.5 text-primary-container text-[13px] font-semibold hover:underline transition-all flex-shrink-0"
           >
             Ver catálogo completo
@@ -256,15 +255,13 @@ export default function FeaturedProducts() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
           </div>
-        ) : featured.length === 0 ? (
-          <EmptyFeatured onCotizar={() => scrollToContact()} />
         ) : (
           <AnimatePresence>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featured.map((product, idx) => (
+              {featured.map((item, idx) => (
                 <FeaturedCard
-                  key={product.id}
-                  product={product}
+                  key={`${item.categoryTitle}-${item.id}`}
+                  item={item}
                   index={idx}
                   onCotizar={scrollToContact}
                 />
