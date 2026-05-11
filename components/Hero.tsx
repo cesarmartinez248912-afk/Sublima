@@ -114,7 +114,7 @@ export default function Hero() {
             </button>
 
             <button
-              onClick={() => scrollTo("#productos")}
+              onClick={() => scrollTo("#destacados")}
               className={`px-8 py-4 rounded-full text-[12px] font-semibold uppercase tracking-widest transition-all duration-200 active:scale-[0.98]
                 ${heroImage
                   ? "bg-white/20 backdrop-blur-sm text-white border border-white/50 hover:bg-white/30"

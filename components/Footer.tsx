@@ -3,14 +3,13 @@
 import { SITE_CONFIG, getWhatsAppUrl } from "@/lib/config";
 
 const navLinks = [
-  { href: "#productos", label: "Productos" },
-  { href: "#proceso", label: "Proceso" },
+  { href: "#destacados", label: "Destacados" },
+  { href: "#galeria-productos", label: "Productos" },
   { href: "#galeria", label: "Galería" },
 ];
 
 const infoLinks = [
-  { href: "#testimonios", label: "Testimonios" },
-  { href: "#contacto", label: "Contacto" },
+  { href: "#contacto", label: "Cotizar" },
 ];
 
 const scrollTo = (id: string) =>

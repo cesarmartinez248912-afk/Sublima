@@ -4,10 +4,9 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navLinks = [
-  { href: "#productos", label: "Productos" },
-  { href: "#proceso", label: "Proceso" },
+  { href: "#destacados", label: "Destacados" },
+  { href: "#galeria-productos", label: "Productos" },
   { href: "#galeria", label: "Galería" },
-  { href: "#testimonios", label: "Testimonios" },
   { href: "#contacto", label: "Cotizar" },
 ];
 
@@ -32,11 +31,10 @@ export default function Navbar() {
   return (
     <>
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
             ? "bg-white/90 backdrop-blur-md shadow-sm"
             : "bg-transparent"
-        }`}
+          }`}
       >
         <div className="flex justify-between items-center w-full px-4 md:px-6 max-w-[1280px] mx-auto h-20">
           {/* Brand */}
@@ -105,11 +103,10 @@ export default function Navbar() {
                 <button
                   key={link.href}
                   onClick={() => handleNavClick(link.href)}
-                  className={`text-left py-3 px-4 rounded-xl text-[13px] font-semibold uppercase tracking-widest transition-all duration-200 ${
-                    link.label === "Cotizar"
+                  className={`text-left py-3 px-4 rounded-xl text-[13px] font-semibold uppercase tracking-widest transition-all duration-200 ${link.label === "Cotizar"
                       ? "bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary mt-2"
                       : "text-on-surface-variant hover:text-primary hover:bg-surface-container"
-                  }`}
+                    }`}
                 >
                   {link.label}
                 </button>
