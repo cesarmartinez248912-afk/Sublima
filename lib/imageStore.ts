@@ -36,6 +36,8 @@ export interface ProductConfig {
   price?: number;
   priceMode?: "fixed" | "quote" | "promo"; // fixed=precio fijo, quote=a cotizar, promo=en promoción
   category?: string;
+  featured?: boolean;    // ← Mostrar en sección Productos Destacados
+  featuredOrder?: number; // ← Orden manual en destacados
 }
 
 export interface HeroConfig {
@@ -251,6 +253,8 @@ function normalizeProduct(value: unknown, fallback: ProductConfig, index: number
     price,
     priceMode: (["fixed", "quote", "promo"].includes(toString(item.priceMode, "")) ? item.priceMode : "fixed") as "fixed" | "quote" | "promo",
     category: toString(item.category, fallback.category ?? ""),
+    featured: typeof item.featured === "boolean" ? item.featured : false,
+    featuredOrder: typeof item.featuredOrder === "number" ? item.featuredOrder : index,
   };
 }
 
